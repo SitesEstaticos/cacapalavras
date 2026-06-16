@@ -1,0 +1,2 @@
+// Domínio da aplicação
+export {}
