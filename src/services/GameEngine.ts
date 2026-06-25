@@ -7,7 +7,7 @@ import {
   WordDirection,
   Position,
   BoardCell,
-} from '@types/index'
+} from '@/types'
 
 const WORD_DICTIONARY = [
   'TYPESCRIPT',

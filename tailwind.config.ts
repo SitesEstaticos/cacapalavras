@@ -1,9 +1,8 @@
-/** @type {import('tailwindcss').Config} */
+import type { Config } from 'tailwindcss'
+import containerQueries from '@tailwindcss/container-queries'
+
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -52,18 +51,16 @@ export default {
         sans: ['Inter', 'sans-serif'],
       },
       borderRadius: {
-        'xl': '1.25rem',
+        xl: '1.25rem',
         '2xl': '1.5rem',
       },
       boxShadow: {
-        'soft': '0 4px 6px rgba(0, 0, 0, 0.07)',
-        'medium': '0 10px 15px rgba(0, 0, 0, 0.1)',
-        'hard': '0 20px 25px rgba(0, 0, 0, 0.15)',
+        soft: '0 4px 6px rgba(0, 0, 0, 0.07)',
+        medium: '0 10px 15px rgba(0, 0, 0, 0.1)',
+        hard: '0 20px 25px rgba(0, 0, 0, 0.15)',
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/container-queries'),
-  ],
+  plugins: [containerQueries],
   darkMode: 'class',
-}
+} satisfies Config

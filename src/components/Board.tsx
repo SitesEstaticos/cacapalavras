@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { Cell } from './BaseComponents'
-import { BoardCell, Position, Word } from '@types/index'
+import { BoardCell, Position, Word } from '@/types'
 
 interface BoardProps {
   grid: BoardCell[][]

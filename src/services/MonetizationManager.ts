@@ -6,7 +6,7 @@ import {
   IInterstitialProvider,
   IAnalyticsAdapter,
 } from '@adapters/index'
-import { RewardedAdConfig, AdReward } from '@types/index'
+import { RewardedAdConfig, AdReward } from '@/types'
 
 export class MonetizationManager {
   private rewardedAdProvider: IRewardedAdProvider

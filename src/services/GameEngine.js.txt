@@ -1,5 +1,5 @@
 // Game Engine - Core da lógica do jogo
-import { GameDifficulty, WordDirection, } from '@types/index';
+import { GameDifficulty, WordDirection, } from '@/types';
 const WORD_DICTIONARY = [
     'TYPESCRIPT',
     'JAVASCRIPT',

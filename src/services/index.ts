@@ -1,6 +1,6 @@
 // Score Service - Gerencia pontuação do jogador
 
-import { GameDifficulty } from '@types/index'
+import { GameDifficulty } from '@/types'
 
 export class ScoreService {
   private readonly baseScores = {
@@ -71,10 +71,10 @@ export class ScoreService {
 }
 
 export class RewardService {
-  private readonly coinsPerWord = {
-    easy: 5,
-    medium: 15,
-    hard: 30,
+  private readonly coinsPerWord: Record<GameDifficulty, number> = {
+    [GameDifficulty.EASY]: 5,
+    [GameDifficulty.MEDIUM]: 15,
+    [GameDifficulty.HARD]: 30,
   }
 
   calculateCoinsForWord(wordLength: number, difficulty: GameDifficulty): number {

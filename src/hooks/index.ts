@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { GameEngine } from '@services/GameEngine'
 import { HintService } from '@services/HintService'
 import { StorageService } from '@services/StorageService'
-import { GameDifficulty, Position, Word } from '@types/index'
+import { GameDifficulty, Position, Word } from '@/types'
 
 interface UseGameState {
   board: any[][]

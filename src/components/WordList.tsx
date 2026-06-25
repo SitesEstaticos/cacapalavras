@@ -1,7 +1,7 @@
 // Componente WordList - Lista de palavras a encontrar
 
 import React from 'react'
-import { Word } from '@types/index'
+import { Word } from '@/types'
 
 interface WordListProps {
   words: Word[]

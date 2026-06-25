@@ -20,6 +20,8 @@ export default defineConfig({
 
       '@services': path.resolve(__dirname, './src/services'),
 
+      '@styles': path.resolve(__dirname, './src/styles'),
+
       '@hooks': path.resolve(__dirname, './src/hooks'),
 
       '@app-types': path.resolve(__dirname, './src/types'),

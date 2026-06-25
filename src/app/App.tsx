@@ -1,8 +1,8 @@
 // Aplicação Principal
 
 import React from 'react'
-import { GamePage } from '@pages/GamePage'
-import '@styles/globals.css'
+import { GamePage } from '@/pages/GamePage'
+import '@/styles/globals.css'
 
 export const App: React.FC = () => {
   return (

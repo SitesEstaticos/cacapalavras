@@ -1,5 +1,5 @@
 // Score Service - Gerencia pontuação do jogador
-import { GameDifficulty } from '@types/index';
+import { GameDifficulty } from '@/types';
 export class ScoreService {
     constructor() {
         Object.defineProperty(this, "baseScores", {
@@ -64,9 +64,9 @@ export class RewardService {
             configurable: true,
             writable: true,
             value: {
-                easy: 5,
-                medium: 15,
-                hard: 30,
+                [GameDifficulty.EASY]: 5,
+                [GameDifficulty.MEDIUM]: 15,
+                [GameDifficulty.HARD]: 30,
             }
         });
     }

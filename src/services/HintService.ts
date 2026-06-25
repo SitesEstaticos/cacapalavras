@@ -1,6 +1,6 @@
 // Hint Service - Gerencia dicas diárias e anúncios recompensados
 
-import { HintData } from '@types/index'
+import { HintData } from '@/types'
 import { IStorageAdapter } from '@adapters/index'
 
 export class HintService {

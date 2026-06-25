@@ -20,9 +20,16 @@
       "node"
     ],
     "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@pages/*": [
+        "./src/pages/*"
+      ],
+      "@styles/*": [
+        "./src/styles/*"
       ],
       "@components/*": [
         "./src/components/*"

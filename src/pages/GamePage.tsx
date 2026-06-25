@@ -13,7 +13,7 @@ import {
 import { useGameLogic, useHints } from '@hooks/index'
 import { StorageService } from '@services/StorageService'
 import { HintService } from '@services/HintService'
-import { GameDifficulty } from '@types/index'
+import { GameDifficulty } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
 
 export const GamePage: React.FC = () => {
@@ -35,7 +35,7 @@ export const GamePage: React.FC = () => {
   }, [gameLogic.isGameComplete, gameLogic.isRunning])
 
   const handleDifficultySelect = (selectedDifficulty: 'easy' | 'medium' | 'hard') => {
-    setDifficulty(selectedDifficulty)
+    setDifficulty(selectedDifficulty as GameDifficulty)
     setShowDifficultyModal(false)
   }
 

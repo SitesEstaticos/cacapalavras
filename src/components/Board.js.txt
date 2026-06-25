@@ -1,5 +1,6 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // Componente do Tabuleiro
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Cell } from './BaseComponents';
 export const Board = ({ grid, selectedCells, foundWords, words, onCellClick, onCellMouseEnter, onSelectionEnd, }) => {
     const [isDrawing, setIsDrawing] = useState(false);
@@ -74,16 +75,10 @@ export const Board = ({ grid, selectedCells, foundWords, words, onCellClick, onC
     const gap = 4;
     const totalWidth = boardWidth * cellSize + (boardWidth - 1) * gap;
     const totalHeight = boardHeight * cellSize + (boardHeight - 1) * gap;
-    return (<div ref={boardRef} className="relative inline-block" onMouseDown={() => setIsDrawing(true)} onMouseUp={() => {
+    return (_jsxs("div", { ref: boardRef, className: "relative inline-block", onMouseDown: () => setIsDrawing(true), onMouseUp: () => {
             setIsDrawing(false);
             onSelectionEnd?.();
-        }}>
-      <canvas ref={canvasRef} width={totalWidth} height={totalHeight} className="absolute inset-0 pointer-events-none"/>
-
-      <div className="grid gap-1 p-4 card" style={{
-            gridTemplateColumns: `repeat(${boardWidth}, minmax(0, 1fr))`,
-        }}>
-        {grid.map((row, rowIndex) => row.map((cell, colIndex) => (<Cell key={`${rowIndex}-${colIndex}`} letter={cell.letter} isSelected={isCellSelected(rowIndex, colIndex)} isFound={isCellFound(rowIndex, colIndex)} isError={false} onClick={() => onCellClick(rowIndex, colIndex)} onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}/>)))}
-      </div>
-    </div>);
+        }, children: [_jsx("canvas", { ref: canvasRef, width: totalWidth, height: totalHeight, className: "absolute inset-0 pointer-events-none" }), _jsx("div", { className: "grid gap-1 p-4 card", style: {
+                    gridTemplateColumns: `repeat(${boardWidth}, minmax(0, 1fr))`,
+                }, children: grid.map((row, rowIndex) => row.map((cell, colIndex) => (_jsx(Cell, { letter: cell.letter, isSelected: isCellSelected(rowIndex, colIndex), isFound: isCellFound(rowIndex, colIndex), isError: false, onClick: () => onCellClick(rowIndex, colIndex), onMouseEnter: () => handleMouseEnter(rowIndex, colIndex) }, `${rowIndex}-${colIndex}`)))) })] }));
 };

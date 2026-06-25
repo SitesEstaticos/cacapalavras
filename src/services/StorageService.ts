@@ -1,7 +1,7 @@
 // Storage Service - Gerencia persistência de dados
 
 import { IStorageAdapter } from '@adapters/index'
-import { UserProgress, GameSession, GameStatistics, UserPreferences } from '@types/index'
+import { UserProgress, GameSession, GameStatistics, UserPreferences } from '@/types'
 
 export class StorageService {
   private storage: IStorageAdapter
