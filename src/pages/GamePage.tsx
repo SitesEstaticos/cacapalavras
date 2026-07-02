@@ -121,7 +121,7 @@ export const GamePage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-secondary">Caça Palavras</h1>
+          <h1 className="text-4xl font-bold text-secondary">Caça Palavras🔍</h1>
           <Button variant="ghost" onClick={() => gameLogic.togglePause()}>
             {gameLogic.isRunning ? '⏸️ Pausar' : '▶️ Retomar'}
           </Button>
@@ -196,6 +196,9 @@ export const GamePage: React.FC = () => {
               </Button>
             </div>
           </div>
+        </div>
+        <div className="mt-8 text-center text-sm text-secondary">
+          <p>&copy; 2026 M³ Technology. Todos os direitos reservados.</p>
         </div>
       </div>
 
