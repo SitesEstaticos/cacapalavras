@@ -298,13 +298,28 @@ export const useHints = (storageService: StorageService) => {
   const [canWatchAd, setCanWatchAd] = useState(true)
 
   useEffect(() => {
+    let isMounted = true
+
     const initHints = async () => {
-      hintServiceRef.current = new HintService(storageService['storage'])
-      const hintData = await hintServiceRef.current.getDailyHints()
-      setHintsAvailable(hintData.dailyHints)
+      try {
+        hintServiceRef.current = new HintService(storageService['storage'])
+        const hintData = await hintServiceRef.current.getDailyHints()
+
+        if (isMounted) {
+          setHintsAvailable(hintData.dailyHints)
+        }
+      } catch {
+        if (isMounted) {
+          setHintsAvailable(0)
+        }
+      }
     }
 
     initHints()
+
+    return () => {
+      isMounted = false
+    }
   }, [storageService])
 
   const useHint = useCallback(async () => {

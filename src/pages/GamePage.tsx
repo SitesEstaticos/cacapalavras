@@ -1,6 +1,6 @@
 // Página Principal do Jogo
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Board,
   HUD,
@@ -18,7 +18,7 @@ import { GameDifficulty, WordSegment } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
 
 export const GamePage: React.FC = () => {
-  const storageService = new StorageService(new WebStorageAdapter())
+  const storageService = useMemo(() => new StorageService(new WebStorageAdapter()), [])
   const [difficulty, setDifficulty] = useState<GameDifficulty | null>(null)
   const [segment, setSegment] = useState<WordSegment | null>(null)
   const [showDifficultyModal, setShowDifficultyModal] = useState(true)
