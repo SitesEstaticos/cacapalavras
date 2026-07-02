@@ -11,6 +11,9 @@ interface HUDProps {
   hintsAvailable: number
   difficulty: string
   onHintClick?: () => void
+  hintButtonLabel?: string
+  hintButtonDisabled?: boolean
+  hintStatusText?: string
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -21,6 +24,9 @@ export const HUD: React.FC<HUDProps> = ({
   hintsAvailable,
   difficulty,
   onHintClick,
+  hintButtonLabel,
+  hintButtonDisabled,
+  hintStatusText,
 }) => {
   const minutes = Math.floor(time / 60)
   const seconds = time % 60
@@ -53,22 +59,23 @@ export const HUD: React.FC<HUDProps> = ({
       </div>
 
       {/* Hints Section */}
-      <div className="card-lg flex items-center justify-between">
+      <div className="card-lg flex items-center justify-between gap-3">
         <div>
           <span className="text-sm text-muted block">Dicas disponíveis</span>
           <span className="text-2xl font-bold text-secondary">{hintsAvailable}</span>
+          <p className="text-xs text-muted mt-1">{hintStatusText || 'Use uma dica para revelar o início de uma palavra.'}</p>
         </div>
         {onHintClick && (
           <button
             onClick={onHintClick}
-            disabled={hintsAvailable === 0}
+            disabled={hintButtonDisabled}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              hintsAvailable > 0
-                ? 'bg-secondary text-dark hover:scale-105'
-                : 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-50'
+              hintButtonDisabled
+                ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-50'
+                : 'bg-secondary text-dark hover:scale-105'
             }`}
           >
-            💡 Dica
+            {hintButtonLabel || `💡 Dica (${hintsAvailable})`}
           </button>
         )}
       </div>

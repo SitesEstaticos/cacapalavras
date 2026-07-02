@@ -1,104 +1,120 @@
-// Hint Service - Gerencia dicas diárias e anúncios recompensados
-
-import { HintData } from '@/types'
 import { IStorageAdapter } from '@adapters/index'
+import { GameEventBus } from './EventBus'
+import { HINTS_CONFIG } from '@/core/constants'
+import { HintState, HintStrategy, HintUsageResult } from '@/types'
 
 export class HintService {
-  private storage: IStorageAdapter
-  private readonly HINTS_PER_DAY = 3
-  private readonly STORAGE_KEY = 'game_hints_data'
+  private readonly storage: IStorageAdapter
+  private readonly storageKey: string
+  private readonly eventBus: GameEventBus
 
-  constructor(storage: IStorageAdapter) {
+  constructor(storage: IStorageAdapter, eventBus: GameEventBus, storageKey = 'game_hints_state') {
     this.storage = storage
+    this.eventBus = eventBus
+    this.storageKey = storageKey
   }
 
-  async getDailyHints(): Promise<HintData> {
-    const data = await this.storage.getItem(this.STORAGE_KEY)
+  async getHintState(): Promise<HintState> {
+    const raw = await this.storage.getItem(this.storageKey)
 
-    if (!data) {
-      return this.createNewHintData()
+    if (!raw) {
+      return this.createInitialState()
     }
 
-    const hintData = JSON.parse(data) as HintData
-    const today = new Date().toDateString()
-
-    // Reset se for um novo dia
-    if (hintData.lastResetDate !== today) {
-      return this.resetDailyHints()
-    }
-
-    return hintData
-  }
-
-  async useHint(): Promise<boolean> {
-    const hintData = await this.getDailyHints()
-
-    if (hintData.dailyHints > 0) {
-      hintData.dailyHints--
-      hintData.totalHintsUsed++
-      await this.storage.setItem(this.STORAGE_KEY, JSON.stringify(hintData))
-      return true
-    }
-
-    return false
-  }
-
-  async canUseAd(): Promise<boolean> {
-    const hintData = await this.getDailyHints()
-    // Limitar a 10 anúncios por dia
-    return hintData.adsWatched < 10
-  }
-
-  async addHintFromAd(): Promise<boolean> {
-    const canUse = await this.canUseAd()
-
-    if (canUse) {
-      const hintData = await this.getDailyHints()
-      hintData.dailyHints++
-      hintData.adsWatched++
-      await this.storage.setItem(this.STORAGE_KEY, JSON.stringify(hintData))
-      return true
-    }
-
-    return false
-  }
-
-  async resetDailyHints(): Promise<HintData> {
-    const newData = this.createNewHintData()
-    await this.storage.setItem(this.STORAGE_KEY, JSON.stringify(newData))
-    return newData
-  }
-
-  private createNewHintData(): HintData {
-    return {
-      dailyHints: this.HINTS_PER_DAY,
-      totalHintsUsed: 0,
-      lastResetDate: new Date().toDateString(),
-      adsWatched: 0,
+    try {
+      const parsed = JSON.parse(raw) as HintState
+      return {
+        ...this.createInitialState(),
+        ...parsed,
+        remainingHints: parsed.remainingHints ?? HINTS_CONFIG.DAILY_FREE_HINTS,
+        usedHints: parsed.usedHints ?? 0,
+        rewardedHints: parsed.rewardedHints ?? 0,
+        rewardedAdsWatched: parsed.rewardedAdsWatched ?? 0,
+      }
+    } catch {
+      return this.createInitialState()
     }
   }
 
-  getHintStrategies(wordLength: number): string[] {
-    return [
-      'first_letter',
-      'direction',
-      'partial_word',
-      'highlight_area',
-    ]
+  async useHint(): Promise<HintUsageResult> {
+    const state = await this.getHintState()
+
+    if (!this.canUseHint(state)) {
+      return { ok: false, reason: 'none_remaining' }
+    }
+
+    state.remainingHints -= 1
+    state.usedHints += 1
+    await this.persist(state)
+    this.eventBus.publish('HintUsed', { remainingHints: state.remainingHints })
+    return { ok: true, remainingHints: state.remainingHints }
   }
 
-  generateHintText(strategy: string, word: string): string {
+  async addHints(amount: number): Promise<HintState> {
+    const state = await this.getHintState()
+    state.remainingHints += amount
+    state.rewardedHints += amount
+    state.rewardedAdsWatched += 1
+    await this.persist(state)
+    this.eventBus.publish('HintGranted', { remainingHints: state.remainingHints })
+    return state
+  }
+
+  async resetHints(): Promise<HintState> {
+    const state = this.createInitialState()
+    await this.persist(state)
+    return state
+  }
+
+  canUseHint(state: HintState): boolean {
+    return state.remainingHints > 0
+  }
+
+  getRemainingHints(state: HintState): number {
+    return state.remainingHints
+  }
+
+  async getHintOptions(wordLength: number): Promise<HintStrategy[]> {
+    const base: HintStrategy[] = ['first_letter', 'direction', 'partial_word']
+    return wordLength > 4 ? [...base, 'highlight_area'] : base
+  }
+
+  generateHintText(strategy: HintStrategy, word: string): string {
     switch (strategy) {
       case 'first_letter':
-        return `A palavra começa com "${word[0]}"`
+        return `A palavra começa com "${word[0]}".`
       case 'direction':
-        return 'A direção foi destacada'
+        return 'A direção da palavra foi destacada.'
       case 'partial_word':
-        return `Palavra: ${word[0]}${'_'.repeat(word.length - 2)}${word[word.length - 1]}`
+        return `Palavra: ${word[0]}${'_'.repeat(Math.max(0, word.length - 2))}${word[word.length - 1]}`
       case 'highlight_area':
-        return 'Área destacada na próxima dica'
+        return 'Uma área da grade foi destacada para orientar a busca.'
       default:
-        return 'Dica disponível'
+        return 'Dica disponível.'
+    }
+  }
+
+  async buildHintForWord(word: string, wordLength: number): Promise<{ text: string; strategy: HintStrategy }> {
+    const strategies = await this.getHintOptions(wordLength)
+    const strategy = strategies[Math.floor(Math.random() * strategies.length)]
+    return {
+      text: this.generateHintText(strategy, word),
+      strategy,
+    }
+  }
+
+  private async persist(state: HintState): Promise<void> {
+    await this.storage.setItem(this.storageKey, JSON.stringify(state))
+  }
+
+  private createInitialState(): HintState {
+    return {
+      remainingHints: HINTS_CONFIG.DAILY_FREE_HINTS,
+      usedHints: 0,
+      rewardedHints: 0,
+      rewardedAdsWatched: 0,
+      gameStart: Date.now(),
+      gameFinish: null,
     }
   }
 }

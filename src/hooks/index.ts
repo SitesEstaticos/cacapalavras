@@ -1,10 +1,13 @@
 // Hooks Customizados
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { GameEngine } from '@services/GameEngine'
 import { HintService } from '@services/HintService'
+import { GameEventBus } from '@services/EventBus'
+import { RewardService, GoogleAdManagerProvider } from '@services/RewardService'
 import { StorageService } from '@services/StorageService'
-import { GameDifficulty, Position, Word, WordSegment } from '@/types'
+import { WebStorageAdapter } from '@adapters/index'
+import { GameDifficulty, HintState, Position, Word, WordSegment } from '@/types'
 
 interface UseGameState {
   board: any[][]
@@ -16,6 +19,12 @@ interface UseGameState {
   isRunning: boolean
   words: Word[]
   isGameComplete: boolean
+  remainingHints: number
+  usedHints: number
+  rewardedHints: number
+  rewardedAdsWatched: number
+  gameStart: number
+  gameFinish: number | null
 }
 
 interface SelectionDirection {
@@ -107,6 +116,12 @@ export const useGameLogic = (
     isRunning: false,
     words: [],
     isGameComplete: false,
+    remainingHints: 0,
+    usedHints: 0,
+    rewardedHints: 0,
+    rewardedAdsWatched: 0,
+    gameStart: Date.now(),
+    gameFinish: null,
   })
 
   // Inicializar jogo
@@ -126,6 +141,12 @@ export const useGameLogic = (
       isRunning: true,
       words: board.words,
       isGameComplete: false,
+      remainingHints: 0,
+      usedHints: 0,
+      rewardedHints: 0,
+      rewardedAdsWatched: 0,
+      gameStart: Date.now(),
+      gameFinish: null,
     })
   }, [difficulty, segment])
 
@@ -257,6 +278,12 @@ export const useGameLogic = (
       isRunning: true,
       words: board.words,
       isGameComplete: false,
+      remainingHints: 0,
+      usedHints: 0,
+      rewardedHints: 0,
+      rewardedAdsWatched: 0,
+      gameStart: Date.now(),
+      gameFinish: null,
     })
   }, [difficulty, segment])
 
@@ -280,6 +307,24 @@ export const useGameLogic = (
     }))
   }, [])
 
+  const pause = useCallback(() => {
+    selectionDirectionRef.current = null
+    selectedCellsRef.current = []
+
+    setGameState(prev => ({
+      ...prev,
+      selectedCells: [],
+      isRunning: false,
+    }))
+  }, [])
+
+  const resume = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      isRunning: !prev.isGameComplete,
+    }))
+  }, [])
+
   return {
     ...gameState,
     startSelection,
@@ -289,28 +334,49 @@ export const useGameLogic = (
     cancelSelection,
     reset,
     togglePause,
+    pause,
+    resume,
   }
 }
 
 export const useHints = (storageService: StorageService) => {
   const hintServiceRef = useRef<HintService | null>(null)
-  const [hintsAvailable, setHintsAvailable] = useState(0)
-  const [canWatchAd, setCanWatchAd] = useState(true)
+  const rewardServiceRef = useRef<RewardService | null>(null)
+  const [hintState, setHintState] = useState<HintState>({
+    remainingHints: 0,
+    usedHints: 0,
+    rewardedHints: 0,
+    rewardedAdsWatched: 0,
+    gameStart: Date.now(),
+    gameFinish: null,
+  })
+  const [isRewardProcessing, setIsRewardProcessing] = useState(false)
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
+  const [rewardMessage, setRewardMessage] = useState('')
+
+  const eventBus = useMemo(() => new GameEventBus(), [])
 
   useEffect(() => {
     let isMounted = true
 
     const initHints = async () => {
       try {
-        hintServiceRef.current = new HintService(storageService['storage'])
-        const hintData = await hintServiceRef.current.getDailyHints()
+        const adapter = new WebStorageAdapter()
+        hintServiceRef.current = new HintService(adapter, eventBus)
+        rewardServiceRef.current = new RewardService(
+          new GoogleAdManagerProvider(),
+          eventBus,
+          30000
+        )
+        const state = await hintServiceRef.current.getHintState()
 
         if (isMounted) {
-          setHintsAvailable(hintData.dailyHints)
+          setHintState(state)
+          setRewardMessage('')
         }
       } catch {
         if (isMounted) {
-          setHintsAvailable(0)
+          setHintState(prev => ({ ...prev, remainingHints: 0 }))
         }
       }
     }
@@ -320,41 +386,113 @@ export const useHints = (storageService: StorageService) => {
     return () => {
       isMounted = false
     }
-  }, [storageService])
+  }, [eventBus, storageService])
+
+  useEffect(() => {
+    if (!rewardServiceRef.current || !rewardServiceRef.current.isCooldownActive()) {
+      if (cooldownRemaining > 0) {
+        setCooldownRemaining(0)
+      }
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      const remainingMs = rewardServiceRef.current?.getCooldownRemainingMs() ?? 0
+      const seconds = Math.max(0, Math.ceil(remainingMs / 1000))
+      setCooldownRemaining(seconds)
+
+      if (seconds === 0) {
+        rewardServiceRef.current?.completeCooldown()
+      }
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [cooldownRemaining, hintState.rewardedAdsWatched])
 
   const useHint = useCallback(async () => {
     if (!hintServiceRef.current) return false
 
-    const used = await hintServiceRef.current.useHint()
+    const result = await hintServiceRef.current.useHint()
 
-    if (used) {
-      setHintsAvailable(prev => Math.max(0, prev - 1))
+    if (result.ok) {
+      setHintState(prev => ({ ...prev, remainingHints: result.remainingHints ?? prev.remainingHints }))
+      setRewardMessage('')
       return true
     }
 
+    setRewardMessage('Não há mais dicas disponíveis para esta partida.')
     return false
   }, [])
 
   const addHintFromAd = useCallback(async () => {
-    if (!hintServiceRef.current) return false
-
-    const added = await hintServiceRef.current.addHintFromAd()
-
-    if (added) {
-      setHintsAvailable(prev => prev + 1)
-      const canUse = await hintServiceRef.current.canUseAd()
-      setCanWatchAd(canUse)
-      return true
+    if (!hintServiceRef.current || !rewardServiceRef.current) {
+      setRewardMessage('Serviço de recompensa indisponível.')
+      return false
     }
 
-    return false
+    if ((hintState.remainingHints ?? 0) > 0) {
+      setRewardMessage('Você ainda possui dicas disponíveis para esta partida.')
+      return false
+    }
+
+    if (rewardServiceRef.current.isCooldownActive()) {
+      const remaining = rewardServiceRef.current.getCooldownRemainingMs()
+      setRewardMessage(`Disponível em ${Math.ceil(remaining / 1000)} segundos.`)
+      return false
+    }
+
+    setIsRewardProcessing(true)
+    setRewardMessage('Carregando anúncio para a recompensa da dica...')
+
+    const request = await rewardServiceRef.current.requestReward()
+
+    if (!request.ok) {
+      setIsRewardProcessing(false)
+      if (request.reason === 'cooldown') {
+        const remaining = request.remainingMs ?? 0
+        setRewardMessage(`Disponível em ${Math.ceil(remaining / 1000)} segundos.`)
+      } else {
+        setRewardMessage('Não foi possível iniciar o anúncio neste momento.')
+      }
+      return false
+    }
+
+    const claimed = await rewardServiceRef.current.claimReward()
+    setIsRewardProcessing(false)
+
+    if (!claimed.ok) {
+      setRewardMessage('A recompensa não pôde ser entregue.')
+      return false
+    }
+
+    const nextState = await hintServiceRef.current.addHints(claimed.reward?.amount ?? 1)
+    setHintState(nextState)
+    setRewardMessage('Você ganhou mais uma dica!')
+    return true
+  }, [])
+
+  const resetHints = useCallback(async () => {
+    if (!hintServiceRef.current) return
+
+    const nextState = await hintServiceRef.current.resetHints()
+    setHintState(nextState)
+    setRewardMessage('')
   }, [])
 
   return {
-    hintsAvailable,
-    canWatchAd,
+    hintsAvailable: hintState.remainingHints,
+    canWatchAd:
+      hintState.remainingHints === 0 &&
+      !rewardServiceRef.current?.isCooldownActive() &&
+      !isRewardProcessing,
     useHint,
     addHintFromAd,
+    resetHints,
+    isRewardProcessing,
+    isCooldownActive: rewardServiceRef.current?.isCooldownActive() ?? false,
+    cooldownSeconds: cooldownRemaining,
+    rewardMessage,
+    hintState,
   }
 }
 

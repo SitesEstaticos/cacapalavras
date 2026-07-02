@@ -5,6 +5,7 @@ import { HintService } from '@services/HintService'
 import { StorageService } from '@services/StorageService'
 import { ScoreService, RewardService, AnalyticsService } from '@services/index'
 import { MonetizationManager } from '@services/MonetizationManager'
+import { GameEventBus } from '@services/EventBus'
 import {
   WebStorageAdapter,
   MockRewardedAdProvider,
@@ -29,8 +30,9 @@ export class AppConfig {
     this.storageAdapter = new WebStorageAdapter()
 
     // Inicializar serviços
+    const eventBus = new GameEventBus()
     this.storageService = new StorageService(this.storageAdapter)
-    this.hintService = new HintService(this.storageAdapter)
+    this.hintService = new HintService(this.storageAdapter, eventBus)
     this.scoreService = new ScoreService()
     this.rewardService = new RewardService()
     this.analyticsService = new AnalyticsService()

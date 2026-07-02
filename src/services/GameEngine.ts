@@ -9,72 +9,12 @@ import {
   Position,
   BoardCell,
 } from '@/types'
+import { contentRegistry } from '@/services/ContentRegistry'
+import type { CategoryWord } from '@/types/Category'
 
-const WORD_DICTIONARIES: Record<WordSegment, string[]> = {
-  [WordSegment.AGROPECUARIA]: [
-    'AGRICULTURA',
-    'PECUARIA',
-    'AGRONOMIA',
-    'FAZENDA',
-    'LAVOURA',
-    'COLHEITA',
-    'PLANTIO',
-    'SEMENTE',
-    'ADUBACAO',
-    'FERTILIZANTE',
-    'IRRIGACAO',
-    'SOLO',
-    'PASTAGEM',
-    'GADO',
-    'BOVINOS',
-    'SUINOS',
-    'AVICULTURA',
-    'LEITE',
-    'TRATOR',
-    'COLHEITADEIRA',
-    'PULVERIZADOR',
-    'SILAGEM',
-    'RACAO',
-    'VACINA',
-    'VETERINARIO',
-    'ARMAZENAGEM',
-    'COOPERATIVA',
-    'AGROINDUSTRIA',
-    'SUSTENTABILIDADE',
-    'BIOTECNOLOGIA',
-  ],
-  [WordSegment.INFORMATICA]: [
-    'COMPUTADOR',
-    'TECLADO',
-    'MONITOR',
-    'MOUSE',
-    'INTERNET',
-    'SOFTWARE',
-    'HARDWARE',
-    'PROGRAMA',
-    'CODIGO',
-    'SISTEMA',
-    'ARQUIVO',
-    'PASTA',
-    'SERVIDOR',
-    'CLIENTE',
-    'BANCO',
-    'DADOS',
-    'REDE',
-    'SENHA',
-    'LOGIN',
-    'NAVEGADOR',
-    'ALGORITMO',
-    'MEMORIA',
-    'PROCESSADOR',
-    'APLICATIVO',
-    'FIREWALL',
-    'BACKUP',
-    'SCRIPT',
-    'DOMINIO',
-    'PACOTE',
-    'TERMINAL',
-  ],
+interface BoardWordCandidate {
+  text: string
+  hint: string
 }
 
 export class GameEngine {
@@ -128,7 +68,7 @@ export class GameEngine {
         const direction = this.getRandomDirectionByDifficulty(difficulty)
         const position = this.getRandomPosition()
 
-        if (this.canPlaceWord(word, position, direction)) {
+        if (this.canPlaceWord(word.text, position, direction)) {
           this.placeWord(word, position, direction)
           break
         }
@@ -158,9 +98,14 @@ export class GameEngine {
     }
   }
 
-  private selectRandomWords(count: number, segment: WordSegment): string[] {
-    const dictionary = WORD_DICTIONARIES[segment] || WORD_DICTIONARIES[WordSegment.AGROPECUARIA]
-    const shuffled = [...dictionary].sort(() => Math.random() - 0.5)
+  private selectRandomWords(count: number, segment: WordSegment): BoardWordCandidate[] {
+    const category = contentRegistry.getCategoryById(segment) ?? contentRegistry.getCategoryById(WordSegment.AGROPECUARIA)
+    const candidates = (category?.words ?? []).map((word: CategoryWord) => ({
+      text: word.word.toUpperCase(),
+      hint: word.hint,
+    }))
+
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5)
     return shuffled.slice(0, count)
   }
 
@@ -250,13 +195,13 @@ export class GameEngine {
     return positions
   }
 
-  private placeWord(word: string, startPos: Position, direction: WordDirection): void {
-    const positions = this.getWordPositions(word, startPos, direction)
+  private placeWord(word: BoardWordCandidate, startPos: Position, direction: WordDirection): void {
+    const positions = this.getWordPositions(word.text, startPos, direction)
     if (!positions) return
 
     const wordId = `word_${this.words.length}`
     const wordToPlace =
-      direction.startsWith('reverse_') ? word.split('').reverse().join('') : word
+      direction.startsWith('reverse_') ? word.text.split('').reverse().join('') : word.text
 
     for (let i = 0; i < wordToPlace.length; i++) {
       const pos = positions[i]
@@ -266,11 +211,11 @@ export class GameEngine {
 
     this.words.push({
       id: wordId,
-      text: word,
+      text: word.text,
       startPos,
       endPos: positions[positions.length - 1],
       direction,
-      hint: `Procure: ${word}`,
+      hint: word.hint,
       found: false,
     })
   }

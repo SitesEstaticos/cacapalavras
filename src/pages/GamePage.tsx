@@ -13,7 +13,6 @@ import {
 } from '@components/index'
 import { useGameLogic, useHints } from '@hooks/index'
 import { StorageService } from '@services/StorageService'
-import { HintService } from '@services/HintService'
 import { GameDifficulty, WordSegment } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
 
@@ -31,7 +30,17 @@ export const GamePage: React.FC = () => {
     difficulty || GameDifficulty.MEDIUM,
     segment || WordSegment.AGROPECUARIA
   )
-  const { hintsAvailable, canWatchAd, useHint, addHintFromAd } = useHints(storageService)
+  const {
+    hintsAvailable,
+    canWatchAd,
+    useHint,
+    addHintFromAd,
+    resetHints,
+    isRewardProcessing,
+    isCooldownActive,
+    cooldownSeconds,
+    rewardMessage,
+  } = useHints(storageService)
 
   // Controlar quando mostrar game over
   useEffect(() => {
@@ -44,11 +53,13 @@ export const GamePage: React.FC = () => {
     setDifficulty(selectedDifficulty as GameDifficulty)
     setShowDifficultyModal(false)
     setShowSegmentModal(true)
+    void resetHints()
   }
 
   const handleSegmentSelect = (selectedSegment: WordSegment) => {
     setSegment(selectedSegment)
     setShowSegmentModal(false)
+    void resetHints()
   }
 
   const handleSelectionStart = (row: number, col: number) => {
@@ -71,19 +82,18 @@ export const GamePage: React.FC = () => {
     const used = await useHint()
 
     if (used) {
-      // Gerar dica aleatória
-      const strategies = ['first_letter', 'direction', 'partial_word']
-      const strategy = strategies[Math.floor(Math.random() * strategies.length)]
-
       const remainingWords = gameLogic.words.filter(
         w => !gameLogic.foundWords.includes(w.id)
       )
 
       if (remainingWords.length > 0) {
         const randomWord = remainingWords[Math.floor(Math.random() * remainingWords.length)]
-        const hintService = new HintService(new WebStorageAdapter())
-        const hint = hintService.generateHintText(strategy, randomWord.text)
-        setCurrentHint(hint)
+        const hintService = new WebStorageAdapter()
+        const stored = await hintService.getItem('game_hints_state')
+        const hintText = stored
+          ? 'Uma dica foi revelada para a palavra selecionada.'
+          : 'Uma dica foi revelada para a palavra selecionada.'
+        setCurrentHint(`${hintText} Procure a palavra: ${randomWord.text}`)
       }
 
       setShowHintModal(false)
@@ -91,12 +101,19 @@ export const GamePage: React.FC = () => {
   }
 
   const handleWatchAd = async () => {
-    // Simular anúncio
+    if (isRewardProcessing || isCooldownActive) {
+      return
+    }
+
+    gameLogic.pause()
     const added = await addHintFromAd()
 
     if (added) {
-      alert('Dica adicionada! 🎉')
       setShowHintModal(false)
+    }
+
+    if (!gameLogic.isGameComplete) {
+      gameLogic.resume()
     }
   }
 
@@ -137,7 +154,7 @@ export const GamePage: React.FC = () => {
               foundWords={gameLogic.foundWords}
               foundWordColors={gameLogic.foundWordColors}
               words={gameLogic.words}
-              disabled={!gameLogic.isRunning || gameLogic.isGameComplete}
+              disabled={!gameLogic.isRunning || gameLogic.isGameComplete || isRewardProcessing}
               onSelectionStart={handleSelectionStart}
               onSelectionMove={handleSelectionMove}
               onSelectionEnd={handleSelectionEnd}
@@ -168,6 +185,17 @@ export const GamePage: React.FC = () => {
               hintsAvailable={hintsAvailable}
               difficulty={difficultyLabel}
               onHintClick={() => setShowHintModal(true)}
+              hintButtonLabel={
+                isRewardProcessing
+                  ? 'Carregando anúncio...'
+                  : isCooldownActive
+                    ? `Disponível em ${cooldownSeconds}s`
+                    : hintsAvailable > 0
+                      ? `💡 Dica (${hintsAvailable})`
+                      : '🎁 Ganhar mais uma dica'
+              }
+              hintButtonDisabled={isRewardProcessing || (!canWatchAd && hintsAvailable === 0)}
+              hintStatusText={rewardMessage || (hintsAvailable > 0 ? 'Use uma dica para revelar uma palavra' : 'Assistir um anúncio para ganhar +1 dica')}
             />
 
             {/* Word List */}
@@ -179,7 +207,14 @@ export const GamePage: React.FC = () => {
 
             {/* Buttons */}
             <div className="space-y-2">
-              <Button variant="primary" className="w-full" onClick={() => gameLogic.reset()}>
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={() => {
+                  gameLogic.reset()
+                  void resetHints()
+                }}
+              >
                 🔄 Novo Jogo
               </Button>
               <Button
@@ -213,6 +248,12 @@ export const GamePage: React.FC = () => {
         onWatchAd={handleWatchAd}
         hintsRemaining={hintsAvailable}
         hint={currentHint || 'Procure uma palavra que faz sentido...'}
+        isLoading={isRewardProcessing}
+        isCooldownActive={isCooldownActive}
+        cooldownSeconds={cooldownSeconds}
+        statusMessage={rewardMessage}
+        canUseHint={hintsAvailable > 0}
+        showAdSlot={hintsAvailable === 0}
       />
 
       <GameOverModal

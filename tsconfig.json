@@ -12,6 +12,7 @@
     "jsx": "react-jsx",
     "skipLibCheck": true,
     "strict": true,
+    "noEmit": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

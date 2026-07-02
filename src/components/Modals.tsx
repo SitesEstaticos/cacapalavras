@@ -1,6 +1,6 @@
 // Componentes de Modais
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Button, Card } from './BaseComponents'
 import { WordSegment } from '@/types'
 
@@ -49,6 +49,12 @@ interface HintModalProps {
   onWatchAd: () => void
   hintsRemaining: number
   hint: string
+  isLoading?: boolean
+  isCooldownActive?: boolean
+  cooldownSeconds?: number
+  statusMessage?: string
+  canUseHint?: boolean
+  showAdSlot?: boolean
 }
 
 export const HintModal: React.FC<HintModalProps> = ({
@@ -58,7 +64,23 @@ export const HintModal: React.FC<HintModalProps> = ({
   onWatchAd,
   hintsRemaining,
   hint,
+  isLoading = false,
+  isCooldownActive = false,
+  cooldownSeconds = 0,
+  statusMessage,
+  canUseHint = true,
+  showAdSlot = false,
 }) => {
+  useEffect(() => {
+    if (!isOpen || !showAdSlot || typeof window === 'undefined') {
+      return
+    }
+
+    const w = window as Window & { adsbygoogle?: Array<unknown> }
+    w.adsbygoogle = w.adsbygoogle || []
+    w.adsbygoogle.push({})
+  }, [isOpen, showAdSlot])
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Dica">
       <div className="space-y-4">
@@ -66,36 +88,60 @@ export const HintModal: React.FC<HintModalProps> = ({
           <p className="text-lg font-medium">{hint}</p>
         </div>
 
-        {hintsRemaining > 0 ? (
-          <>
-            <p className="text-sm text-muted">
-              Você tem <span className="text-secondary font-bold">{hintsRemaining}</span> dica
-              {hintsRemaining !== 1 ? 's' : ''} gratuita{hintsRemaining !== 1 ? 's' : ''} hoje.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="primary" onClick={onUseHint} className="flex-1">
-                Usar Dica
-              </Button>
-              <Button variant="ghost" onClick={onClose} className="flex-1">
-                Cancelar
-              </Button>
-            </div>
-          </>
+        {isLoading ? (
+          <p className="text-sm text-secondary font-medium">Carregando anúncio...</p>
+        ) : isCooldownActive ? (
+          <p className="text-sm text-secondary font-medium">
+            Disponível em {cooldownSeconds} segundo{cooldownSeconds === 1 ? '' : 's'}.
+          </p>
         ) : (
           <>
-            <p className="text-sm text-muted">Suas dicas gratuitas de hoje acabaram.</p>
-            <p className="text-sm text-secondary font-medium">
-              Assista a um anúncio para ganhar +1 dica!
+            <p className="text-sm text-muted">
+              {canUseHint
+                ? `Você tem ${hintsRemaining} dica${hintsRemaining !== 1 ? 's' : ''} disponível${hintsRemaining !== 1 ? 's' : ''} para esta partida.`
+                : 'Suas dicas gratuitas de hoje acabaram.'}
             </p>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={onWatchAd} className="flex-1">
-                📺 Assistir Anúncio
-              </Button>
+            <p className="text-sm text-secondary font-medium">
+              {canUseHint
+                ? 'Use uma dica agora.'
+                : 'Assista a um anúncio para ganhar +1 dica!'}
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {canUseHint && (
+                <Button variant="primary" onClick={onUseHint} className="flex-1">
+                  Usar Dica
+                </Button>
+              )}
+              {!canUseHint && (
+                <Button variant="secondary" onClick={onWatchAd} className="flex-1">
+                  📺 Assistir Anúncio
+                </Button>
+              )}
               <Button variant="ghost" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>
             </div>
           </>
+        )}
+
+        {showAdSlot && !isLoading && !isCooldownActive && !canUseHint && (
+          <div className="rounded-lg border border-secondary/30 bg-dark/60 p-3 mt-3">
+            <p className="text-xs uppercase tracking-wide text-muted mb-2">Anúncio patrocinado</p>
+            <div className="min-h-[250px]">
+              <ins
+                className="adsbygoogle"
+                style={{ display: 'block' }}
+                data-ad-client="ca-pub-9534764444507609"
+                data-ad-slot="1234567890"
+                data-ad-format="auto"
+                data-full-width-responsive="true"
+              />
+            </div>
+          </div>
+        )}
+
+        {statusMessage && !isLoading && (
+          <p className="text-sm text-secondary font-medium">{statusMessage}</p>
         )}
       </div>
     </Modal>

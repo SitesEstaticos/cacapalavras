@@ -1,5 +1,7 @@
 // Types para o jogo de caça-palavras
 
+export * from './Category'
+
 export enum GameDifficulty {
   EASY = 'easy',
   MEDIUM = 'medium',
@@ -8,7 +10,9 @@ export enum GameDifficulty {
 
 export enum WordSegment {
   AGROPECUARIA = 'agropecuaria',
-  INFORMATICA = 'informatica',
+  CIENCIAS = 'ciencias',
+  TECNOLOGIA = 'tecnologia',
+  INFORMATICA = 'tecnologia',
 }
 
 export enum WordDirection {
@@ -60,6 +64,12 @@ export interface GameState {
   difficulty: GameDifficulty
   foundWords: string[]
   totalWords: number
+  remainingHints: number
+  usedHints: number
+  rewardedHints: number
+  rewardedAdsWatched: number
+  gameStart: number
+  gameFinish: number | null
 }
 
 export interface SelectionPath {
@@ -73,6 +83,43 @@ export interface HintData {
   totalHintsUsed: number
   lastResetDate: string
   adsWatched: number
+}
+
+export type HintStrategy = 'first_letter' | 'direction' | 'partial_word' | 'highlight_area'
+export type HintType = 'free' | 'rewarded'
+
+export interface HintState {
+  remainingHints: number
+  usedHints: number
+  rewardedHints: number
+  rewardedAdsWatched: number
+  gameStart: number
+  gameFinish: number | null
+}
+
+export interface HintUsageResult {
+  ok: boolean
+  reason?: 'none_remaining' | 'not_started' | 'unknown'
+  remainingHints?: number
+}
+
+export interface RewardRequestState {
+  ok: boolean
+  reason: 'in_flight' | 'cooldown' | 'provider' | 'error' | 'started' | 'not_requested' | 'unknown'
+  remainingMs?: number
+  error?: unknown
+}
+
+export interface RewardDelivery {
+  type: 'hint'
+  amount: number
+  grantedAt: number
+}
+
+export interface RewardDeliveryResult {
+  ok: boolean
+  reason?: string
+  reward?: RewardDelivery
 }
 
 export interface UserProgress {
