@@ -17,6 +17,9 @@ interface BoardWordCandidate {
   hint: string
 }
 
+const MAX_WORDS_PER_BOARD = 8
+const MAX_WORD_PLACEMENT_ATTEMPTS = 200
+
 export class GameEngine {
   private board: GameBoard
   private words: Word[]
@@ -62,9 +65,8 @@ export class GameEngine {
     // Inserir palavras no tabuleiro
     for (const word of selectedWords) {
       let attempts = 0
-      const maxAttempts = 50
 
-      while (attempts < maxAttempts) {
+      while (attempts < MAX_WORD_PLACEMENT_ATTEMPTS) {
         const direction = this.getRandomDirectionByDifficulty(difficulty)
         const position = this.getRandomPosition()
 
@@ -86,27 +88,35 @@ export class GameEngine {
   }
 
   private getWordCountByDifficulty(difficulty: GameDifficulty): number {
-    switch (difficulty) {
-      case GameDifficulty.EASY:
-        return 5
-      case GameDifficulty.MEDIUM:
-        return 8
-      case GameDifficulty.HARD:
-        return 12
-      default:
-        return 8
-    }
+    void difficulty
+    return MAX_WORDS_PER_BOARD
   }
 
   private selectRandomWords(count: number, segment: WordSegment): BoardWordCandidate[] {
-    const category = contentRegistry.getCategoryById(segment) ?? contentRegistry.getCategoryById(WordSegment.AGROPECUARIA)
-    const candidates = (category?.words ?? []).map((word: CategoryWord) => ({
-      text: word.word.toUpperCase(),
-      hint: word.hint,
-    }))
+    const categories = contentRegistry.getCategories()
+    const preferredCategory = categories.find(category => category.id === segment)
 
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, count)
+    const candidates = [
+      ...(preferredCategory?.words ?? []).map((word: CategoryWord) => ({
+        text: word.word.toUpperCase(),
+        hint: word.hint,
+      })),
+      ...categories
+        .filter(category => category.id !== preferredCategory?.id)
+        .flatMap(category =>
+          category.words.map((word: CategoryWord) => ({
+            text: word.word.toUpperCase(),
+            hint: word.hint,
+          }))
+        ),
+    ]
+
+    const uniqueCandidates = candidates.filter(
+      (candidate, index, source) => source.findIndex(item => item.text === candidate.text) === index
+    )
+
+    const shuffled = [...uniqueCandidates].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, Math.min(count, shuffled.length))
   }
 
   private getRandomDirectionByDifficulty(difficulty: GameDifficulty): WordDirection {
