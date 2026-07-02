@@ -68,7 +68,7 @@ export const MenuPage: React.FC<{ onStartGame: () => void }> = ({ onStartGame })
         {/* Rodapé */}
         <div className="text-center text-xs text-muted mt-8">
           <p>Versão 1.0.0</p>
-          <p className="mt-2">© 2024 - Desenvolvido com ❤️</p>
+          <p className="mt-2">© 2026 M³ Technology - Desenvolvido com carinho</p>
         </div>
       </div>
     </div>

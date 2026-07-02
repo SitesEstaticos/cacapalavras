@@ -15,6 +15,7 @@ import { useGameLogic, useHints } from '@hooks/index'
 import { StorageService } from '@services/StorageService'
 import { GameDifficulty, WordSegment } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
+import AdContainer from '@/components/ads/AdContainer'
 
 export const GamePage: React.FC = () => {
   const storageService = useMemo(() => new StorageService(new WebStorageAdapter()), [])
@@ -142,8 +143,10 @@ export const GamePage: React.FC = () => {
           <Button variant="ghost" onClick={() => gameLogic.togglePause()}>
             {gameLogic.isRunning ? '⏸️ Pausar' : '▶️ Retomar'}
           </Button>
-        </div>
 
+        </div>
+        {/* Banner Superior */}
+        <AdContainer slot="7716746018" />
         {/* Main Game Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Board - Left */}
@@ -204,7 +207,8 @@ export const GamePage: React.FC = () => {
               foundWords={gameLogic.foundWords}
               onWordClick={word => console.log('Palavra clicada:', word)}
             />
-
+            {/* Banner Inferior */}
+            <AdContainer slot="7716746018" />
             {/* Buttons */}
             <div className="space-y-2">
               <Button
@@ -236,6 +240,7 @@ export const GamePage: React.FC = () => {
           <p>&copy; 2026 M³ Technology. Todos os direitos reservados.</p>
         </div>
       </div>
+
 
       {/* Modals */}
       <DifficultyModal isOpen={showDifficultyModal} onSelect={handleDifficultySelect} />
