@@ -260,6 +260,15 @@ export const useGameLogic = (
     })
   }, [difficulty, segment])
 
+  const cancelSelection = useCallback(() => {
+    selectionDirectionRef.current = null
+    selectedCellsRef.current = []
+    setGameState(prev => ({
+      ...prev,
+      selectedCells: [],
+    }))
+  }, [])
+
   const togglePause = useCallback(() => {
     selectionDirectionRef.current = null
     selectedCellsRef.current = []
@@ -277,6 +286,7 @@ export const useGameLogic = (
     updateSelection,
     selectCell,
     validateSelection,
+    cancelSelection,
     reset,
     togglePause,
   }

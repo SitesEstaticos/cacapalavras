@@ -63,6 +63,10 @@ export const GamePage: React.FC = () => {
     gameLogic.validateSelection()
   }
 
+  const handleSelectionCancel = () => {
+    gameLogic.cancelSelection()
+  }
+
   const handleUseHint = async () => {
     const used = await useHint()
 
@@ -133,9 +137,11 @@ export const GamePage: React.FC = () => {
               foundWords={gameLogic.foundWords}
               foundWordColors={gameLogic.foundWordColors}
               words={gameLogic.words}
+              disabled={!gameLogic.isRunning || gameLogic.isGameComplete}
               onSelectionStart={handleSelectionStart}
               onSelectionMove={handleSelectionMove}
               onSelectionEnd={handleSelectionEnd}
+              onSelectionCancel={handleSelectionCancel}
             />
 
             {/* Game Status */}
