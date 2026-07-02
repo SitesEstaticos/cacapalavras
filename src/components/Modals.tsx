@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { Button, Card } from './BaseComponents'
+import { WordSegment } from '@/types'
 
 interface ModalProps {
   isOpen: boolean
@@ -206,6 +207,42 @@ export const DifficultyModal: React.FC<DifficultyModalProps> = ({ isOpen, onSele
           >
             <p className="font-bold text-red-400">🔴 Difícil</p>
             <p className="text-sm text-muted">+ Palavras invertidas</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface SegmentModalProps {
+  isOpen: boolean
+  onSelect: (segment: WordSegment) => void
+}
+
+export const SegmentModal: React.FC<SegmentModalProps> = ({ isOpen, onSelect }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2 className="text-2xl font-bold text-secondary mb-2">Escolha o Segmento</h2>
+        <p className="text-sm text-muted mb-6">Selecione o tema das palavras deste jogo.</p>
+
+        <div className="space-y-3">
+          <button
+            onClick={() => onSelect(WordSegment.AGROPECUARIA)}
+            className="w-full p-4 rounded-xl bg-green-500 bg-opacity-20 border border-green-500 hover:bg-opacity-30 transition-all text-left"
+          >
+            <p className="font-bold text-green-400">Agropecuaria</p>
+            <p className="text-sm text-muted">Agricultura, pecuaria, maquinas e campo</p>
+          </button>
+
+          <button
+            onClick={() => onSelect(WordSegment.INFORMATICA)}
+            className="w-full p-4 rounded-xl bg-cyan-500 bg-opacity-20 border border-cyan-500 hover:bg-opacity-30 transition-all text-left"
+          >
+            <p className="font-bold text-cyan-400">Informatica</p>
+            <p className="text-sm text-muted">Computadores, redes, sistemas e codigo</p>
           </button>
         </div>
       </div>

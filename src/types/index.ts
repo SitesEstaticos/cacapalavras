@@ -6,6 +6,11 @@ export enum GameDifficulty {
   HARD = 'hard',
 }
 
+export enum WordSegment {
+  AGROPECUARIA = 'agropecuaria',
+  INFORMATICA = 'informatica',
+}
+
 export enum WordDirection {
   HORIZONTAL = 'horizontal',
   VERTICAL = 'vertical',

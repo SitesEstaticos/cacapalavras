@@ -47,7 +47,8 @@
   }
 
   .cell {
-    @apply w-12 h-12 flex items-center justify-center rounded-lg font-bold text-lg cursor-pointer transition-all duration-200 select-none;
+    @apply aspect-square w-full min-w-0 flex items-center justify-center rounded-lg font-bold cursor-pointer transition-all duration-200 select-none;
+    font-size: clamp(0.85rem, 3.2vw, 1.125rem);
   }
 
   .cell-default {
@@ -178,6 +179,18 @@
 
 .pulse-glow {
   animation: pulseGlow 2s infinite;
+}
+
+.word-search-board {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: contain;
+}
+
+.word-search-grid {
+  width: min(100%, 36rem);
 }
 
 /* Scrollbar customizada */

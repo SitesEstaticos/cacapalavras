@@ -4,12 +4,13 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { GameEngine } from '@services/GameEngine'
 import { HintService } from '@services/HintService'
 import { StorageService } from '@services/StorageService'
-import { GameDifficulty, Position, Word } from '@/types'
+import { GameDifficulty, Position, Word, WordSegment } from '@/types'
 
 interface UseGameState {
   board: any[][]
   selectedCells: Position[]
   foundWords: string[]
+  foundWordColors: Record<string, string>
   score: number
   time: number
   isRunning: boolean
@@ -17,12 +18,90 @@ interface UseGameState {
   isGameComplete: boolean
 }
 
-export const useGameLogic = (difficulty: GameDifficulty) => {
+interface SelectionDirection {
+  rowStep: number
+  colStep: number
+}
+
+const FOUND_WORD_COLOR = '#047857'
+
+const getStraightPath = (start: Position, end: Position): Position[] => {
+  const rowDiff = end.row - start.row
+  const colDiff = end.col - start.col
+
+  if (rowDiff === 0 && colDiff === 0) return [start]
+
+  const isHorizontal = rowDiff === 0
+  const isVertical = colDiff === 0
+  const isDiagonal = Math.abs(rowDiff) === Math.abs(colDiff)
+
+  if (!isHorizontal && !isVertical && !isDiagonal) return [start]
+
+  const rowStep = Math.sign(rowDiff)
+  const colStep = Math.sign(colDiff)
+  const length = Math.max(Math.abs(rowDiff), Math.abs(colDiff))
+
+  return Array.from({ length: length + 1 }, (_, index) => ({
+    row: start.row + rowStep * index,
+    col: start.col + colStep * index,
+  }))
+}
+
+const getSelectionDirection = (start: Position, end: Position): SelectionDirection | null => {
+  const rowDiff = end.row - start.row
+  const colDiff = end.col - start.col
+
+  if (rowDiff === 0 && colDiff === 0) return null
+
+  const isHorizontal = rowDiff === 0
+  const isVertical = colDiff === 0
+  const isDiagonal = Math.abs(rowDiff) === Math.abs(colDiff)
+
+  if (!isHorizontal && !isVertical && !isDiagonal) return null
+
+  return {
+    rowStep: Math.sign(rowDiff),
+    colStep: Math.sign(colDiff),
+  }
+}
+
+const isCellOnDirection = (
+  start: Position,
+  cell: Position,
+  direction: SelectionDirection
+): boolean => {
+  const rowDiff = cell.row - start.row
+  const colDiff = cell.col - start.col
+
+  if (rowDiff === 0 && colDiff === 0) return true
+
+  if (direction.rowStep === 0) {
+    return rowDiff === 0 && Math.sign(colDiff) === direction.colStep
+  }
+
+  if (direction.colStep === 0) {
+    return colDiff === 0 && Math.sign(rowDiff) === direction.rowStep
+  }
+
+  return (
+    Math.abs(rowDiff) === Math.abs(colDiff) &&
+    Math.sign(rowDiff) === direction.rowStep &&
+    Math.sign(colDiff) === direction.colStep
+  )
+}
+
+export const useGameLogic = (
+  difficulty: GameDifficulty,
+  segment: WordSegment = WordSegment.AGROPECUARIA
+) => {
   const gameEngineRef = useRef<GameEngine | null>(null)
+  const selectionDirectionRef = useRef<SelectionDirection | null>(null)
+  const selectedCellsRef = useRef<Position[]>([])
   const [gameState, setGameState] = useState<UseGameState>({
     board: [],
     selectedCells: [],
     foundWords: [],
+    foundWordColors: {},
     score: 0,
     time: 0,
     isRunning: false,
@@ -33,15 +112,22 @@ export const useGameLogic = (difficulty: GameDifficulty) => {
   // Inicializar jogo
   useEffect(() => {
     gameEngineRef.current = new GameEngine()
-    const board = gameEngineRef.current.generateBoard(difficulty)
+    selectionDirectionRef.current = null
+    selectedCellsRef.current = []
+    const board = gameEngineRef.current.generateBoard(difficulty, segment)
 
-    setGameState(prev => ({
-      ...prev,
+    setGameState({
       board: board.grid,
-      words: board.words,
+      selectedCells: [],
+      foundWords: [],
+      foundWordColors: {},
+      score: 0,
+      time: 0,
       isRunning: true,
-    }))
-  }, [difficulty])
+      words: board.words,
+      isGameComplete: false,
+    })
+  }, [difficulty, segment])
 
   // Timer
   useEffect(() => {
@@ -57,18 +143,55 @@ export const useGameLogic = (difficulty: GameDifficulty) => {
     return () => clearInterval(interval)
   }, [gameState.isRunning])
 
-  const selectCell = useCallback((row: number, col: number) => {
+  const startSelection = useCallback((row: number, col: number) => {
+    if (!gameEngineRef.current) return
+
+    selectionDirectionRef.current = null
+    selectedCellsRef.current = [{ row, col }]
+    setGameState(prev => ({
+      ...prev,
+      selectedCells: [{ row, col }],
+    }))
+  }, [])
+
+  const updateSelection = useCallback((row: number, col: number) => {
     if (!gameEngineRef.current) return
 
     setGameState(prev => {
-      const newSelected = [...prev.selectedCells]
-      const existsIndex = newSelected.findIndex(pos => pos.row === row && pos.col === col)
+      const nextCell = { row, col }
+      const startCell = prev.selectedCells[0]
 
-      if (existsIndex >= 0) {
-        newSelected.splice(existsIndex, 1)
-      } else {
-        newSelected.push({ row, col })
+      if (!startCell) {
+        selectionDirectionRef.current = null
+        selectedCellsRef.current = [nextCell]
+        return {
+          ...prev,
+          selectedCells: [nextCell],
+        }
       }
+
+      if (startCell.row === nextCell.row && startCell.col === nextCell.col) {
+        selectionDirectionRef.current = null
+        selectedCellsRef.current = [startCell]
+        return {
+          ...prev,
+          selectedCells: [startCell],
+        }
+      }
+
+      if (!selectionDirectionRef.current) {
+        const direction = getSelectionDirection(startCell, nextCell)
+        if (!direction) return prev
+
+        selectionDirectionRef.current = direction
+      }
+
+      if (!isCellOnDirection(startCell, nextCell, selectionDirectionRef.current)) {
+        return prev
+      }
+
+      const newSelected = getStraightPath(startCell, nextCell)
+      selectedCellsRef.current = newSelected
 
       return {
         ...prev,
@@ -77,13 +200,17 @@ export const useGameLogic = (difficulty: GameDifficulty) => {
     })
   }, [])
 
-  const validateSelection = useCallback(() => {
-    if (!gameEngineRef.current || gameState.selectedCells.length === 0) return
+  const selectCell = updateSelection
 
-    const wordId = gameEngineRef.current.validateSelection(gameState.selectedCells)
+  const validateSelection = useCallback(() => {
+    const selectedCells = selectedCellsRef.current
+    if (!gameEngineRef.current || selectedCells.length === 0) return
+
+    const wordId = gameEngineRef.current.validateSelection(selectedCells)
 
     if (wordId) {
       gameEngineRef.current.markWordAsFound(wordId)
+      const isComplete = gameEngineRef.current.isGameComplete()
 
       // Calcular pontos (exemplo simples)
       const word = gameState.words.find(w => w.id === wordId)
@@ -92,44 +219,62 @@ export const useGameLogic = (difficulty: GameDifficulty) => {
       setGameState(prev => ({
         ...prev,
         foundWords: [...prev.foundWords, wordId],
+        foundWordColors: {
+          ...prev.foundWordColors,
+          [wordId]: FOUND_WORD_COLOR,
+        },
         score: prev.score + points,
         selectedCells: [],
-        isGameComplete: gameEngineRef.current?.isGameComplete() || false,
+        isRunning: !isComplete,
+        isGameComplete: isComplete,
       }))
+      selectionDirectionRef.current = null
+      selectedCellsRef.current = []
     } else {
       // Seleção inválida - limpar
       setGameState(prev => ({
         ...prev,
         selectedCells: [],
       }))
+      selectionDirectionRef.current = null
+      selectedCellsRef.current = []
     }
   }, [gameState.selectedCells, gameState.words])
 
   const reset = useCallback(() => {
     gameEngineRef.current = new GameEngine()
-    const board = gameEngineRef.current.generateBoard(difficulty)
+    selectionDirectionRef.current = null
+    selectedCellsRef.current = []
+    const board = gameEngineRef.current.generateBoard(difficulty, segment)
 
     setGameState({
       board: board.grid,
       selectedCells: [],
       foundWords: [],
+      foundWordColors: {},
       score: 0,
       time: 0,
       isRunning: true,
       words: board.words,
       isGameComplete: false,
     })
-  }, [difficulty])
+  }, [difficulty, segment])
 
   const togglePause = useCallback(() => {
+    selectionDirectionRef.current = null
+    selectedCellsRef.current = []
+
     setGameState(prev => ({
       ...prev,
-      isRunning: !prev.isRunning,
+      selectedCells: [],
+      isRunning: prev.isGameComplete ? false : !prev.isRunning,
     }))
   }, [])
 
   return {
     ...gameState,
+    startSelection,
+    updateSelection,
     selectCell,
     validateSelection,
     reset,

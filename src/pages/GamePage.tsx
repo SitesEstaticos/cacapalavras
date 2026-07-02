@@ -7,24 +7,30 @@ import {
   WordList,
   Button,
   DifficultyModal,
+  SegmentModal,
   HintModal,
   GameOverModal,
 } from '@components/index'
 import { useGameLogic, useHints } from '@hooks/index'
 import { StorageService } from '@services/StorageService'
 import { HintService } from '@services/HintService'
-import { GameDifficulty } from '@/types'
+import { GameDifficulty, WordSegment } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
 
 export const GamePage: React.FC = () => {
   const storageService = new StorageService(new WebStorageAdapter())
   const [difficulty, setDifficulty] = useState<GameDifficulty | null>(null)
+  const [segment, setSegment] = useState<WordSegment | null>(null)
   const [showDifficultyModal, setShowDifficultyModal] = useState(true)
+  const [showSegmentModal, setShowSegmentModal] = useState(false)
   const [showHintModal, setShowHintModal] = useState(false)
   const [showGameOverModal, setShowGameOverModal] = useState(false)
   const [currentHint, setCurrentHint] = useState('')
 
-  const gameLogic = useGameLogic(difficulty || GameDifficulty.MEDIUM)
+  const gameLogic = useGameLogic(
+    difficulty || GameDifficulty.MEDIUM,
+    segment || WordSegment.AGROPECUARIA
+  )
   const { hintsAvailable, canWatchAd, useHint, addHintFromAd } = useHints(storageService)
 
   // Controlar quando mostrar game over
@@ -37,17 +43,20 @@ export const GamePage: React.FC = () => {
   const handleDifficultySelect = (selectedDifficulty: 'easy' | 'medium' | 'hard') => {
     setDifficulty(selectedDifficulty as GameDifficulty)
     setShowDifficultyModal(false)
+    setShowSegmentModal(true)
   }
 
-  const handleCellClick = (row: number, col: number) => {
-    gameLogic.selectCell(row, col)
+  const handleSegmentSelect = (selectedSegment: WordSegment) => {
+    setSegment(selectedSegment)
+    setShowSegmentModal(false)
   }
 
-  const handleCellMouseEnter = (row: number, col: number) => {
-    // Implementar drag para web
-    if (gameLogic.selectedCells.length > 0) {
-      gameLogic.selectCell(row, col)
-    }
+  const handleSelectionStart = (row: number, col: number) => {
+    gameLogic.startSelection(row, col)
+  }
+
+  const handleSelectionMove = (row: number, col: number) => {
+    gameLogic.updateSelection(row, col)
   }
 
   const handleSelectionEnd = () => {
@@ -87,8 +96,13 @@ export const GamePage: React.FC = () => {
     }
   }
 
-  if (!difficulty) {
-    return <DifficultyModal isOpen={showDifficultyModal} onSelect={handleDifficultySelect} />
+  if (!difficulty || !segment) {
+    return (
+      <>
+        <DifficultyModal isOpen={showDifficultyModal} onSelect={handleDifficultySelect} />
+        <SegmentModal isOpen={showSegmentModal} onSelect={handleSegmentSelect} />
+      </>
+    )
   }
 
   const difficultyLabel =
@@ -117,9 +131,10 @@ export const GamePage: React.FC = () => {
               grid={gameLogic.board}
               selectedCells={gameLogic.selectedCells}
               foundWords={gameLogic.foundWords}
+              foundWordColors={gameLogic.foundWordColors}
               words={gameLogic.words}
-              onCellClick={handleCellClick}
-              onCellMouseEnter={handleCellMouseEnter}
+              onSelectionStart={handleSelectionStart}
+              onSelectionMove={handleSelectionMove}
               onSelectionEnd={handleSelectionEnd}
             />
 
@@ -161,7 +176,16 @@ export const GamePage: React.FC = () => {
               <Button variant="primary" className="w-full" onClick={() => gameLogic.reset()}>
                 🔄 Novo Jogo
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => setShowDifficultyModal(true)}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setDifficulty(null)
+                  setSegment(null)
+                  setShowDifficultyModal(true)
+                  setShowSegmentModal(false)
+                }}
+              >
                 🎮 Mudar Dificuldade
               </Button>
             </div>
@@ -171,6 +195,7 @@ export const GamePage: React.FC = () => {
 
       {/* Modals */}
       <DifficultyModal isOpen={showDifficultyModal} onSelect={handleDifficultySelect} />
+      <SegmentModal isOpen={showSegmentModal} onSelect={handleSegmentSelect} />
 
       <HintModal
         isOpen={showHintModal}

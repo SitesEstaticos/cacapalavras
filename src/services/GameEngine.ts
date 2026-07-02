@@ -3,44 +3,79 @@
 import {
   GameBoard,
   GameDifficulty,
+  WordSegment,
   Word,
   WordDirection,
   Position,
   BoardCell,
 } from '@/types'
 
-const WORD_DICTIONARY = [
-  'AGRICULTURA',
-  'PECUARIA',
-  'AGRONOMIA',
-  'FAZENDA',
-  'LAVOURA',
-  'COLHEITA',
-  'PLANTIO',
-  'SEMENTE',
-  'ADUBACAO',
-  'FERTILIZANTE',
-  'IRRIGACAO',
-  'SOLO',
-  'PASTAGEM',
-  'GADO',
-  'BOVINOS',
-  'SUINOS',
-  'AVICULTURA',
-  'LEITE',
-  'TRATOR',
-  'COLHEITADEIRA',
-  'PULVERIZADOR',
-  'SILAGEM',
-  'RACAO',
-  'VACINA',
-  'VETERINARIO',
-  'ARMAZENAGEM',
-  'COOPERATIVA',
-  'AGROINDUSTRIA',
-  'SUSTENTABILIDADE',
-  'BIOTECNOLOGIA'
-];
+const WORD_DICTIONARIES: Record<WordSegment, string[]> = {
+  [WordSegment.AGROPECUARIA]: [
+    'AGRICULTURA',
+    'PECUARIA',
+    'AGRONOMIA',
+    'FAZENDA',
+    'LAVOURA',
+    'COLHEITA',
+    'PLANTIO',
+    'SEMENTE',
+    'ADUBACAO',
+    'FERTILIZANTE',
+    'IRRIGACAO',
+    'SOLO',
+    'PASTAGEM',
+    'GADO',
+    'BOVINOS',
+    'SUINOS',
+    'AVICULTURA',
+    'LEITE',
+    'TRATOR',
+    'COLHEITADEIRA',
+    'PULVERIZADOR',
+    'SILAGEM',
+    'RACAO',
+    'VACINA',
+    'VETERINARIO',
+    'ARMAZENAGEM',
+    'COOPERATIVA',
+    'AGROINDUSTRIA',
+    'SUSTENTABILIDADE',
+    'BIOTECNOLOGIA',
+  ],
+  [WordSegment.INFORMATICA]: [
+    'COMPUTADOR',
+    'TECLADO',
+    'MONITOR',
+    'MOUSE',
+    'INTERNET',
+    'SOFTWARE',
+    'HARDWARE',
+    'PROGRAMA',
+    'CODIGO',
+    'SISTEMA',
+    'ARQUIVO',
+    'PASTA',
+    'SERVIDOR',
+    'CLIENTE',
+    'BANCO',
+    'DADOS',
+    'REDE',
+    'SENHA',
+    'LOGIN',
+    'NAVEGADOR',
+    'ALGORITMO',
+    'MEMORIA',
+    'PROCESSADOR',
+    'APLICATIVO',
+    'FIREWALL',
+    'BACKUP',
+    'SCRIPT',
+    'DOMINIO',
+    'PACOTE',
+    'TERMINAL',
+  ],
+}
 
 export class GameEngine {
   private board: GameBoard
@@ -72,12 +107,17 @@ export class GameEngine {
     }
   }
 
-  generateBoard(difficulty: GameDifficulty, width: number = 10, height: number = 10): GameBoard {
+  generateBoard(
+    difficulty: GameDifficulty,
+    segment: WordSegment = WordSegment.AGROPECUARIA,
+    width: number = 10,
+    height: number = 10
+  ): GameBoard {
     this.board = this.initializeBoard(width, height)
     this.words = []
 
     const wordCount = this.getWordCountByDifficulty(difficulty)
-    const selectedWords = this.selectRandomWords(wordCount)
+    const selectedWords = this.selectRandomWords(wordCount, segment)
 
     // Inserir palavras no tabuleiro
     for (const word of selectedWords) {
@@ -118,9 +158,9 @@ export class GameEngine {
     }
   }
 
-  private selectRandomWords(count: number): string[] {
-    const selected: string[] = []
-    const shuffled = [...WORD_DICTIONARY].sort(() => Math.random() - 0.5)
+  private selectRandomWords(count: number, segment: WordSegment): string[] {
+    const dictionary = WORD_DICTIONARIES[segment] || WORD_DICTIONARIES[WordSegment.AGROPECUARIA]
+    const shuffled = [...dictionary].sort(() => Math.random() - 0.5)
     return shuffled.slice(0, count)
   }
 

@@ -1,6 +1,6 @@
 // Componente do Tabuleiro
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Cell } from './BaseComponents'
 import { BoardCell, Position, Word } from '@/types'
 
@@ -8,9 +8,11 @@ interface BoardProps {
   grid: BoardCell[][]
   selectedCells: Position[]
   foundWords: string[]
+  foundWordColors: Record<string, string>
   words: Word[]
-  onCellClick: (row: number, col: number) => void
-  onCellMouseEnter?: (row: number, col: number) => void
+  disabled?: boolean
+  onSelectionStart: (row: number, col: number) => void
+  onSelectionMove: (row: number, col: number) => void
   onSelectionEnd?: () => void
 }
 
@@ -18,136 +20,124 @@ export const Board: React.FC<BoardProps> = ({
   grid,
   selectedCells,
   foundWords,
+  foundWordColors,
   words,
-  onCellClick,
-  onCellMouseEnter,
+  disabled = false,
+  onSelectionStart,
+  onSelectionMove,
   onSelectionEnd,
 }) => {
   const [isDrawing, setIsDrawing] = useState(false)
+  const activePointerId = useRef<number | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    if (canvasRef.current && selectedCells.length > 0) {
-      drawSelectionLine()
-    }
-  }, [selectedCells])
+    if (!disabled) return
 
-  useEffect(() => {
-    const handleMouseUp = () => {
-      if (isDrawing) {
-        setIsDrawing(false)
-        onSelectionEnd?.()
-      }
-    }
-
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => document.removeEventListener('mouseup', handleMouseUp)
-  }, [isDrawing, onSelectionEnd])
-
-  const drawSelectionLine = () => {
-    if (selectedCells.length < 2 || !canvasRef.current) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    const cellSize = 56 // w-14 = 56px
-    const cellGap = 4 // gap-1 = 4px
-    const cellTotal = cellSize + cellGap
-
-    ctx.strokeStyle = '#4ECDC4'
-    ctx.lineWidth = 3
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.globalAlpha = 0.6
-
-    const start = selectedCells[0]
-    const startX = start.col * cellTotal + cellSize / 2
-    const startY = start.row * cellTotal + cellSize / 2
-
-    ctx.beginPath()
-    ctx.moveTo(startX, startY)
-
-    for (let i = 1; i < selectedCells.length; i++) {
-      const cell = selectedCells[i]
-      const x = cell.col * cellTotal + cellSize / 2
-      const y = cell.row * cellTotal + cellSize / 2
-      ctx.lineTo(x, y)
-    }
-
-    ctx.stroke()
-  }
+    setIsDrawing(false)
+    activePointerId.current = null
+  }, [disabled])
 
   const getWordIdAtCell = (row: number, col: number): string[] => {
     return grid[row]?.[col]?.wordIds || []
   }
 
-  const isCellFound = (row: number, col: number): boolean => {
+  const getFoundWordIdAtCell = (row: number, col: number): string | undefined => {
     const wordIds = getWordIdAtCell(row, col)
-    return wordIds.some(id => foundWords.includes(id))
+    return wordIds.find(id => foundWords.includes(id))
+  }
+
+  const isCellFound = (row: number, col: number): boolean => {
+    return Boolean(getFoundWordIdAtCell(row, col))
   }
 
   const isCellSelected = (row: number, col: number): boolean => {
     return selectedCells.some(pos => pos.row === row && pos.col === col)
   }
 
-  const handleMouseDown = (row: number, col: number) => {
-    setIsDrawing(true)
-    onCellClick(row, col)
-  }
+  const getCellFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const element = document.elementFromPoint(event.clientX, event.clientY)
+    const cell = element?.closest<HTMLElement>('[data-board-cell="true"]')
 
-  const handleMouseEnter = (row: number, col: number) => {
-    if (isDrawing) {
-      onCellMouseEnter?.(row, col)
+    if (!cell || !boardRef.current?.contains(cell)) return null
+
+    return {
+      row: Number(cell.dataset.row),
+      col: Number(cell.dataset.col),
     }
   }
 
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled) return
+
+    const cell = getCellFromPointer(event)
+    if (!cell) return
+
+    event.preventDefault()
+    activePointerId.current = event.pointerId
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setIsDrawing(true)
+    onSelectionStart(cell.row, cell.col)
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled || !isDrawing || activePointerId.current !== event.pointerId) return
+
+    event.preventDefault()
+    const cell = getCellFromPointer(event)
+    if (cell) onSelectionMove(cell.row, cell.col)
+  }
+
+  const finishSelection = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDrawing || activePointerId.current !== event.pointerId) return
+
+    event.preventDefault()
+    setIsDrawing(false)
+    activePointerId.current = null
+    if (!disabled) onSelectionEnd?.()
+  }
+
   const boardWidth = grid[0]?.length || 0
-  const boardHeight = grid.length
-  const cellSize = 56
-  const gap = 4
-  const totalWidth = boardWidth * cellSize + (boardWidth - 1) * gap
-  const totalHeight = boardHeight * cellSize + (boardHeight - 1) * gap
 
   return (
     <div
       ref={boardRef}
-      className="relative inline-block"
-      onMouseDown={() => setIsDrawing(true)}
-      onMouseUp={() => {
-        setIsDrawing(false)
-        onSelectionEnd?.()
-      }}
+      className={`word-search-board relative w-full max-w-full overflow-x-auto ${
+        disabled ? 'opacity-75' : ''
+      }`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishSelection}
+      onPointerCancel={finishSelection}
     >
-      <canvas
-        ref={canvasRef}
-        width={totalWidth}
-        height={totalHeight}
-        className="absolute inset-0 pointer-events-none"
-      />
-
       <div
-        className="grid gap-1 p-4 card"
+        className="word-search-grid grid gap-1 p-2 sm:p-4 card mx-auto"
         style={{
           gridTemplateColumns: `repeat(${boardWidth}, minmax(0, 1fr))`,
         }}
+        aria-label={`Tabuleiro com ${words.length} palavras`}
       >
         {grid.map((row, rowIndex) =>
-          row.map((cell, colIndex) => (
-            <Cell
-              key={`${rowIndex}-${colIndex}`}
-              letter={cell.letter}
-              isSelected={isCellSelected(rowIndex, colIndex)}
-              isFound={isCellFound(rowIndex, colIndex)}
-              isError={false}
-              onClick={() => onCellClick(rowIndex, colIndex)}
-              onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
-            />
-          ))
+          row.map((cell, colIndex) => {
+            const foundWordId = getFoundWordIdAtCell(rowIndex, colIndex)
+
+            return (
+              <div
+                key={`${rowIndex}-${colIndex}`}
+                data-board-cell="true"
+                data-row={rowIndex}
+                data-col={colIndex}
+              >
+                <Cell
+                  letter={cell.letter}
+                  isSelected={isCellSelected(rowIndex, colIndex)}
+                  isFound={isCellFound(rowIndex, colIndex)}
+                  isError={false}
+                  foundColor={foundWordId ? foundWordColors[foundWordId] : undefined}
+                />
+              </div>
+            )
+          })
         )}
       </div>
     </div>

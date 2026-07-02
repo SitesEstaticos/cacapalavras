@@ -7,8 +7,7 @@ interface CellProps {
   isSelected: boolean
   isFound: boolean
   isError: boolean
-  onClick: () => void
-  onMouseEnter?: () => void
+  foundColor?: string
 }
 
 export const Cell: React.FC<CellProps> = ({
@@ -16,8 +15,7 @@ export const Cell: React.FC<CellProps> = ({
   isSelected,
   isFound,
   isError,
-  onClick,
-  onMouseEnter,
+  foundColor,
 }) => {
   let className = 'cell-default'
 
@@ -32,8 +30,7 @@ export const Cell: React.FC<CellProps> = ({
   return (
     <div
       className={className}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
+      style={isFound && foundColor ? { backgroundColor: foundColor, borderColor: foundColor } : undefined}
       role="button"
       tabIndex={0}
       aria-label={`Letter ${letter}`}
