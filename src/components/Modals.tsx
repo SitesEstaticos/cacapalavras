@@ -1,7 +1,8 @@
 // Componentes de Modais
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Button, Card } from './BaseComponents'
+import DisplayAd from './DisplayAd'
 import { WordSegment } from '@/types'
 
 interface ModalProps {
@@ -71,16 +72,6 @@ export const HintModal: React.FC<HintModalProps> = ({
   canUseHint = true,
   showAdSlot = false,
 }) => {
-  useEffect(() => {
-    if (!isOpen || !showAdSlot || typeof window === 'undefined') {
-      return
-    }
-
-    const w = window as Window & { adsbygoogle?: Array<unknown> }
-    w.adsbygoogle = w.adsbygoogle || []
-    w.adsbygoogle.push({})
-  }, [isOpen, showAdSlot])
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Dica">
       <div className="space-y-4">
@@ -128,14 +119,7 @@ export const HintModal: React.FC<HintModalProps> = ({
           <div className="rounded-lg border border-secondary/30 bg-dark/60 p-3 mt-3">
             <p className="text-xs uppercase tracking-wide text-muted mb-2">Anúncio patrocinado</p>
             <div className="min-h-[250px]">
-              <ins
-                className="adsbygoogle"
-                style={{ display: 'block' }}
-                data-ad-client="ca-pub-9534764444507609"
-                data-ad-slot="1234567890"
-                data-ad-format="auto"
-                data-full-width-responsive="true"
-              />
+              <DisplayAd slot="7716746018" className="w-full" style={{ minHeight: '250px' }} />
             </div>
           </div>
         )}
