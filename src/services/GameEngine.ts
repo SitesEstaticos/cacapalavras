@@ -17,8 +17,13 @@ interface BoardWordCandidate {
   hint: string
 }
 
-const MAX_WORDS_PER_BOARD = 8
-const MAX_WORD_PLACEMENT_ATTEMPTS = 200
+const MAX_WORDS_PER_BOARD = 12
+const MAX_WORD_PLACEMENT_ATTEMPTS = 400
+const WORD_COUNTS_BY_DIFFICULTY = {
+  [GameDifficulty.EASY]: 6,
+  [GameDifficulty.MEDIUM]: 9,
+  [GameDifficulty.HARD]: 12,
+} as const
 
 export class GameEngine {
   private board: GameBoard
@@ -59,7 +64,8 @@ export class GameEngine {
     this.board = this.initializeBoard(width, height)
     this.words = []
 
-    const wordCount = this.getWordCountByDifficulty(difficulty)
+    const availableWords = this.getWordCandidates(segment)
+    const wordCount = this.getWordCountByDifficulty(difficulty, availableWords.length)
     const selectedWords = this.selectRandomWords(wordCount, segment)
 
     // Inserir palavras no tabuleiro
@@ -87,12 +93,12 @@ export class GameEngine {
     return this.board
   }
 
-  private getWordCountByDifficulty(difficulty: GameDifficulty): number {
-    void difficulty
-    return MAX_WORDS_PER_BOARD
+  private getWordCountByDifficulty(difficulty: GameDifficulty, availableWordCount: number): number {
+    const baseCount = WORD_COUNTS_BY_DIFFICULTY[difficulty] ?? WORD_COUNTS_BY_DIFFICULTY[GameDifficulty.MEDIUM]
+    return Math.min(baseCount, Math.min(availableWordCount, MAX_WORDS_PER_BOARD))
   }
 
-  private selectRandomWords(count: number, segment: WordSegment): BoardWordCandidate[] {
+  private getWordCandidates(segment: WordSegment): BoardWordCandidate[] {
     const categories = contentRegistry.getCategories()
     const preferredCategory = categories.find(category => category.id === segment)
 
@@ -111,11 +117,17 @@ export class GameEngine {
         ),
     ]
 
-    const uniqueCandidates = candidates.filter(
+    return candidates.filter(
       (candidate, index, source) => source.findIndex(item => item.text === candidate.text) === index
     )
+  }
 
-    const shuffled = [...uniqueCandidates].sort(() => Math.random() - 0.5)
+  private selectRandomWords(count: number, segment: WordSegment): BoardWordCandidate[] {
+    const candidates = this.getWordCandidates(segment)
+
+    const sortedByLength = [...candidates].sort((a, b) => a.text.length - b.text.length)
+    const shuffled = [...sortedByLength].sort(() => Math.random() - 0.5)
+
     return shuffled.slice(0, Math.min(count, shuffled.length))
   }
 
