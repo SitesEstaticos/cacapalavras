@@ -17,20 +17,25 @@ import { GameDifficulty, WordSegment } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
 import AdContainer from '@/components/ads/AdContainer'
 
-export const GamePage: React.FC = () => {
+interface GamePageProps {
+  onBackToMenu?: () => void
+}
+
+export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
   const storageService = useMemo(() => new StorageService(new WebStorageAdapter()), [])
-  const [difficulty, setDifficulty] = useState<GameDifficulty | null>(null)
-  const [segment, setSegment] = useState<WordSegment | null>(null)
+  
+  // Iniciar com padrões para evitar que o layout desapareça na troca
+  const [difficulty, setDifficulty] = useState<GameDifficulty>(GameDifficulty.MEDIUM)
+  const [segment, setSegment] = useState<WordSegment>(WordSegment.AGROPECUARIA)
+  
   const [showDifficultyModal, setShowDifficultyModal] = useState(true)
   const [showSegmentModal, setShowSegmentModal] = useState(false)
   const [showHintModal, setShowHintModal] = useState(false)
   const [showGameOverModal, setShowGameOverModal] = useState(false)
   const [currentHint, setCurrentHint] = useState('')
 
-  const gameLogic = useGameLogic(
-    difficulty || GameDifficulty.MEDIUM,
-    segment || WordSegment.AGROPECUARIA
-  )
+  const gameLogic = useGameLogic(difficulty, segment)
+  
   const {
     hintsAvailable,
     canWatchAd,
@@ -54,13 +59,13 @@ export const GamePage: React.FC = () => {
     setDifficulty(selectedDifficulty as GameDifficulty)
     setShowDifficultyModal(false)
     setShowSegmentModal(true)
-    void resetHints()
   }
 
   const handleSegmentSelect = (selectedSegment: WordSegment) => {
     setSegment(selectedSegment)
     setShowSegmentModal(false)
     void resetHints()
+    gameLogic.reset() // Reinicia o jogo com os novos parâmetros
   }
 
   const handleSelectionStart = (row: number, col: number) => {
@@ -89,12 +94,7 @@ export const GamePage: React.FC = () => {
 
       if (remainingWords.length > 0) {
         const randomWord = remainingWords[Math.floor(Math.random() * remainingWords.length)]
-        const hintService = new WebStorageAdapter()
-        const stored = await hintService.getItem('game_hints_state')
-        const hintText = stored
-          ? 'Uma dica foi revelada para a palavra selecionada.'
-          : 'Uma dica foi revelada para a palavra selecionada.'
-        setCurrentHint(`${hintText} Procure a palavra: ${randomWord.text}`)
+        setCurrentHint(`Procure a palavra: ${randomWord.text}`)
       }
 
       setShowHintModal(false)
@@ -118,15 +118,6 @@ export const GamePage: React.FC = () => {
     }
   }
 
-  if (!difficulty || !segment) {
-    return (
-      <>
-        <DifficultyModal isOpen={showDifficultyModal} onSelect={handleDifficultySelect} />
-        <SegmentModal isOpen={showSegmentModal} onSelect={handleSegmentSelect} />
-      </>
-    )
-  }
-
   const difficultyLabel =
     {
       [GameDifficulty.EASY]: 'Fácil',
@@ -139,16 +130,17 @@ export const GamePage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-secondary">Caça Palavras🔍</h1>
+          <h1 className="text-4xl font-bold text-secondary">Caça Palavras 🔍</h1>
           <Button variant="ghost" onClick={() => gameLogic.togglePause()}>
             {gameLogic.isRunning ? '⏸️ Pausar' : '▶️ Retomar'}
           </Button>
-
         </div>
+
         {/* Banner Superior */}
         <AdContainer slot="7716746018" />
+
         {/* Main Game Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
           {/* Board - Left */}
           <div className="lg:col-span-2">
             <Board
@@ -157,7 +149,7 @@ export const GamePage: React.FC = () => {
               foundWords={gameLogic.foundWords}
               foundWordColors={gameLogic.foundWordColors}
               words={gameLogic.words}
-              disabled={!gameLogic.isRunning || gameLogic.isGameComplete || isRewardProcessing}
+              disabled={!gameLogic.isRunning || gameLogic.isGameComplete || isRewardProcessing || showDifficultyModal || showSegmentModal}
               onSelectionStart={handleSelectionStart}
               onSelectionMove={handleSelectionMove}
               onSelectionEnd={handleSelectionEnd}
@@ -207,8 +199,10 @@ export const GamePage: React.FC = () => {
               foundWords={gameLogic.foundWords}
               onWordClick={word => console.log('Palavra clicada:', word)}
             />
+
             {/* Banner Inferior */}
             <AdContainer slot="7716746018" />
+
             {/* Buttons */}
             <div className="space-y-2">
               <Button
@@ -224,23 +218,18 @@ export const GamePage: React.FC = () => {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  setDifficulty(null)
-                  setSegment(null)
-                  setShowDifficultyModal(true)
-                  setShowSegmentModal(false)
-                }}
+                onClick={onBackToMenu}
               >
-                🎮 Mudar Dificuldade
+                🏠 Voltar ao Menu
               </Button>
             </div>
           </div>
         </div>
+
         <div className="mt-8 text-center text-sm text-secondary">
           <p>&copy; 2026 M³ Technology. Todos os direitos reservados.</p>
         </div>
       </div>
-
 
       {/* Modals */}
       <DifficultyModal isOpen={showDifficultyModal} onSelect={handleDifficultySelect} />

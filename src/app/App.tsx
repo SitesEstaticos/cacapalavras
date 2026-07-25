@@ -13,7 +13,7 @@ export const App: React.FC = () => {
       {currentPage === 'menu' ? (
         <MenuPage onStartGame={() => setCurrentPage('game')} />
       ) : (
-        <GamePage />
+        <GamePage onBackToMenu={() => setCurrentPage('menu')} />
       )}
     </div>
   )
