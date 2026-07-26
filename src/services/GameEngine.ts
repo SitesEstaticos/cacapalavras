@@ -44,6 +44,7 @@ export class GameEngine {
             letter: '',
             wordIds: [],
             isSelected: false,
+            isHinted: false,
           }))
       )
 
@@ -100,33 +101,26 @@ export class GameEngine {
 
   private getWordCandidates(segment: WordSegment): BoardWordCandidate[] {
     const categories = contentRegistry.getCategories()
-    const preferredCategory = categories.find(category => category.id === segment)
-
-    const candidates = [
-      ...(preferredCategory?.words ?? []).map((word: CategoryWord) => ({
-        text: word.word.toUpperCase(),
-        hint: word.hint,
-      })),
-      ...categories
-        .filter(category => category.id !== preferredCategory?.id)
-        .flatMap(category =>
-          category.words.map((word: CategoryWord) => ({
-            text: word.word.toUpperCase(),
-            hint: word.hint,
-          }))
-        ),
-    ]
-
-    return candidates.filter(
-      (candidate, index, source) => source.findIndex(item => item.text === candidate.text) === index
+    
+    const targetCategory = categories.find(
+      category => String(category.id).toLowerCase() === String(segment).toLowerCase()
     )
+
+    const selectedCategory = targetCategory || categories[0]
+
+    if (!selectedCategory) {
+      return []
+    }
+
+    return selectedCategory.words.map((word: CategoryWord) => ({
+      text: word.word.toUpperCase(),
+      hint: word.hint,
+    }))
   }
 
   private selectRandomWords(count: number, segment: WordSegment): BoardWordCandidate[] {
     const candidates = this.getWordCandidates(segment)
-
-    const sortedByLength = [...candidates].sort((a, b) => a.text.length - b.text.length)
-    const shuffled = [...sortedByLength].sort(() => Math.random() - 0.5)
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5)
 
     return shuffled.slice(0, Math.min(count, shuffled.length))
   }
@@ -135,15 +129,12 @@ export class GameEngine {
     const random = Math.random()
 
     if (difficulty === GameDifficulty.EASY) {
-      // Apenas horizontal e vertical
       return random > 0.5 ? WordDirection.HORIZONTAL : WordDirection.VERTICAL
     } else if (difficulty === GameDifficulty.MEDIUM) {
-      // Adicionar diagonais
       if (random < 0.33) return WordDirection.HORIZONTAL
       if (random < 0.66) return WordDirection.VERTICAL
       return random > 0.83 ? WordDirection.DIAGONAL_DOWN : WordDirection.DIAGONAL_UP
     } else {
-      // Difícil: todas as direções incluindo invertidas
       const directions = Object.values(WordDirection)
       return directions[Math.floor(Math.random() * directions.length)]
     }
@@ -254,12 +245,33 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Aplica uma dica no tabuleiro.
+   * Sorteia uma palavra não encontrada e marca a primeira letra com isHinted = true.
+   */
+  public applyHint(): { wordText: string; hint: string } | null {
+    const remainingWords = this.getRemainingWords()
+
+    if (remainingWords.length === 0) return null
+
+    const randomWord = remainingWords[Math.floor(Math.random() * remainingWords.length)]
+
+    const { row, col } = randomWord.startPos
+    if (this.board.grid[row]?.[col]) {
+      this.board.grid[row][col].isHinted = true
+    }
+
+    return {
+      wordText: randomWord.text,
+      hint: randomWord.hint,
+    }
+  }
+
   validateSelection(positions: Position[]): string | null {
     if (positions.length === 0) return null
 
     const selectionText = positions.map(pos => this.board.grid[pos.row][pos.col].letter).join('')
 
-    // Procurar a palavra exatamente como está
     for (const word of this.words) {
       if (!word.found) {
         if (word.text === selectionText || word.text === selectionText.split('').reverse().join('')) {
@@ -275,6 +287,17 @@ export class GameEngine {
     const word = this.words.find(w => w.id === wordId)
     if (word) {
       word.found = true
+
+      // 💡 Obtém todas as posições da palavra e remove o estado de dica (isHinted = false)
+      const positions = this.getWordPositions(word.text, word.startPos, word.direction)
+      if (positions) {
+        positions.forEach(pos => {
+          if (this.board.grid[pos.row]?.[pos.col]) {
+            this.board.grid[pos.row][pos.col].isHinted = false
+          }
+        })
+      }
+
       return true
     }
     return false

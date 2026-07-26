@@ -4,6 +4,7 @@ import React from 'react'
 import { Button, Card } from './BaseComponents'
 import DisplayAd from './DisplayAd'
 import { WordSegment } from '@/types'
+import { contentRegistry } from '@/services/ContentRegistry' // ou import { getCategories } de @/data/categories
 
 interface ModalProps {
   isOpen: boolean
@@ -252,6 +253,9 @@ interface SegmentModalProps {
 export const SegmentModal: React.FC<SegmentModalProps> = ({ isOpen, onSelect }) => {
   if (!isOpen) return null
 
+  // Busca todas as categorias cadastradas automaticamente!
+  const categories = contentRegistry.getCategories()
+
   return (
     <div className="modal-overlay">
       <div className="modal">
@@ -259,21 +263,18 @@ export const SegmentModal: React.FC<SegmentModalProps> = ({ isOpen, onSelect }) 
         <p className="text-sm text-muted mb-6">Selecione o tema das palavras deste jogo.</p>
 
         <div className="space-y-3">
-          <button
-            onClick={() => onSelect(WordSegment.AGROPECUARIA)}
-            className="w-full p-4 rounded-xl bg-green-500 bg-opacity-20 border border-green-500 hover:bg-opacity-30 transition-all text-left"
-          >
-            <p className="font-bold text-green-400">Agropecuaria</p>
-            <p className="text-sm text-muted">Agricultura, pecuaria, maquinas e campo</p>
-          </button>
-
-          <button
-            onClick={() => onSelect(WordSegment.INFORMATICA)}
-            className="w-full p-4 rounded-xl bg-cyan-500 bg-opacity-20 border border-cyan-500 hover:bg-opacity-30 transition-all text-left"
-          >
-            <p className="font-bold text-cyan-400">Informatica</p>
-            <p className="text-sm text-muted">Computadores, redes, sistemas e codigo</p>
-          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => onSelect(cat.id as WordSegment)}
+              className="w-full p-4 rounded-xl bg-secondary/10 border border-secondary/30 hover:bg-secondary/20 transition-all text-left"
+            >
+              <p className="font-bold text-secondary">{cat.name}</p>
+              {cat.description && (
+                <p className="text-sm text-muted">{cat.description}</p>
+              )}
+            </button>
+          ))}
         </div>
       </div>
     </div>

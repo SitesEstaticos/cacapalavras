@@ -6,6 +6,7 @@ interface CellProps {
   letter: string
   isSelected: boolean
   isFound: boolean
+  isHinted?: boolean
   isError: boolean
   foundColor?: string
 }
@@ -14,23 +15,34 @@ export const Cell: React.FC<CellProps> = ({
   letter,
   isSelected,
   isFound,
+  isHinted = false,
   isError,
   foundColor,
 }) => {
+  // A célula SEMPRE deve manter 'cell-default' como classe base
   let className = 'cell-default'
 
   if (isError) {
-    className = 'cell-error'
+    className += ' cell-error'
   } else if (isFound) {
-    className = 'cell-found'
+    className += ' cell-found'
   } else if (isSelected) {
-    className = 'cell-selected'
+    className += ' cell-selected'
+  }
+
+  // Adiciona 'cell-hinted' cumulativamente se a dica estiver ativa e a palavra ainda não foi achada
+  if (isHinted && !isFound) {
+    className += ' cell-hinted'
   }
 
   return (
     <div
       className={className}
-      style={isFound && foundColor ? { backgroundColor: foundColor, borderColor: foundColor } : undefined}
+      style={
+        isFound && foundColor && !isHinted
+          ? { backgroundColor: foundColor, borderColor: foundColor }
+          : undefined
+      }
       role="button"
       tabIndex={0}
       aria-label={`Letter ${letter}`}

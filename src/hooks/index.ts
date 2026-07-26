@@ -8,6 +8,9 @@ import { RewardService, GoogleAdManagerProvider } from '@services/RewardService'
 import { StorageService } from '@services/StorageService'
 import { WebStorageAdapter } from '@adapters/index'
 import { GameDifficulty, HintState, Position, Word, WordSegment } from '@/types'
+import { useStats } from './useStats'
+
+export * from './useStats'
 
 interface UseGameState {
   board: any[][]
@@ -106,6 +109,8 @@ export const useGameLogic = (
   const gameEngineRef = useRef<GameEngine | null>(null)
   const selectionDirectionRef = useRef<SelectionDirection | null>(null)
   const selectedCellsRef = useRef<Position[]>([])
+  const { saveGameStats } = useStats()
+
   const [gameState, setGameState] = useState<UseGameState>({
     board: [],
     selectedCells: [],
@@ -232,23 +237,34 @@ export const useGameLogic = (
     if (wordId) {
       gameEngineRef.current.markWordAsFound(wordId)
       const isComplete = gameEngineRef.current.isGameComplete()
+      const updatedBoard = gameEngineRef.current.getBoard()
 
-      // Calcular pontos (exemplo simples)
+      // Calcular pontos
       const word = gameState.words.find(w => w.id === wordId)
-      const points = word ? (word.text.length * 10) : 0
+      const points = word ? word.text.length * 10 : 0
 
-      setGameState(prev => ({
-        ...prev,
-        foundWords: [...prev.foundWords, wordId],
-        foundWordColors: {
-          ...prev.foundWordColors,
-          [wordId]: FOUND_WORD_COLOR,
-        },
-        score: prev.score + points,
-        selectedCells: [],
-        isRunning: !isComplete,
-        isGameComplete: isComplete,
-      }))
+      setGameState(prev => {
+        const newScore = prev.score + points
+
+        // Se concluiu o jogo, salva as estatísticas automaticamente
+        if (isComplete) {
+          saveGameStats(newScore, prev.time)
+        }
+
+        return {
+          ...prev,
+          board: updatedBoard.grid.map(row => [...row]), // 💡 Atualiza a referência do tabuleiro para remover o pisca-pisca
+          foundWords: [...prev.foundWords, wordId],
+          foundWordColors: {
+            ...prev.foundWordColors,
+            [wordId]: FOUND_WORD_COLOR,
+          },
+          score: newScore,
+          selectedCells: [],
+          isRunning: !isComplete,
+          isGameComplete: isComplete,
+        }
+      })
       selectionDirectionRef.current = null
       selectedCellsRef.current = []
     } else {
@@ -260,7 +276,23 @@ export const useGameLogic = (
       selectionDirectionRef.current = null
       selectedCellsRef.current = []
     }
-  }, [gameState.selectedCells, gameState.words])
+  }, [gameState.words, saveGameStats])
+
+  const applyHint = useCallback(() => {
+    if (!gameEngineRef.current) return null
+
+    const hintResult = gameEngineRef.current.applyHint()
+
+    if (hintResult) {
+      const updatedBoard = gameEngineRef.current.getBoard()
+      setGameState(prev => ({
+        ...prev,
+        board: updatedBoard.grid.map(row => [...row]), // 💡 Força o React a re-renderizar as linhas do tabuleiro com isHinted
+      }))
+    }
+
+    return hintResult
+  }, [])
 
   const reset = useCallback(() => {
     gameEngineRef.current = new GameEngine()
@@ -331,6 +363,7 @@ export const useGameLogic = (
     updateSelection,
     selectCell,
     validateSelection,
+    applyHint,
     cancelSelection,
     reset,
     togglePause,
@@ -469,7 +502,7 @@ export const useHints = (storageService: StorageService) => {
     setHintState(nextState)
     setRewardMessage('Você ganhou mais uma dica!')
     return true
-  }, [])
+  }, [hintState.remainingHints])
 
   const resetHints = useCallback(async () => {
     if (!hintServiceRef.current) return

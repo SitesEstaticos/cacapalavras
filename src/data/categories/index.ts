@@ -1,12 +1,14 @@
 import agropecuaria from './agropecuaria'
 import ciencias from './ciencias'
 import tecnologia from './tecnologia'
+import biblica from './biblica' 
 import type { Category, CategoryCollection, GameDefinition } from '@/types/Category'
 
 export const categories: Record<string, Category> = {
   [agropecuaria.id]: agropecuaria,
   [ciencias.id]: ciencias,
   [tecnologia.id]: tecnologia,
+  [biblica.id]: biblica,
 }
 
 export const categoryCollections: CategoryCollection[] = [
@@ -15,7 +17,8 @@ export const categoryCollections: CategoryCollection[] = [
     slug: 'educational-basics',
     name: 'Fundamentos Educativos',
     description: 'Coleção inicial para explorar temas diversos.',
-    categories: [agropecuaria.id, ciencias.id, tecnologia.id],
+    categories: [agropecuaria.id, ciencias.id, tecnologia.id, biblica.id],
+
   },
 ]
 

@@ -12,7 +12,7 @@ export enum WordSegment {
   AGROPECUARIA = 'agropecuaria',
   CIENCIAS = 'ciencias',
   TECNOLOGIA = 'tecnologia',
-  INFORMATICA = 'tecnologia',
+  BIBLICA = 'biblica'
 }
 
 export enum WordDirection {
@@ -45,6 +45,7 @@ export interface BoardCell {
   letter: string
   wordIds: string[]
   isSelected: boolean
+  isHinted?: boolean
 }
 
 export interface GameBoard {

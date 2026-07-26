@@ -1,6 +1,6 @@
 // Página Principal do Jogo
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Board,
   HUD,
@@ -11,7 +11,7 @@ import {
   HintModal,
   GameOverModal,
 } from '@components/index'
-import { useGameLogic, useHints } from '@hooks/index'
+import { useGameLogic, useHints, useStats } from '@hooks/index'
 import { StorageService } from '@services/StorageService'
 import { GameDifficulty, WordSegment } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
@@ -23,11 +23,10 @@ interface GamePageProps {
 
 export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
   const storageService = useMemo(() => new StorageService(new WebStorageAdapter()), [])
-  
-  // Iniciar com padrões para evitar que o layout desapareça na troca
+
   const [difficulty, setDifficulty] = useState<GameDifficulty>(GameDifficulty.MEDIUM)
   const [segment, setSegment] = useState<WordSegment>(WordSegment.AGROPECUARIA)
-  
+
   const [showDifficultyModal, setShowDifficultyModal] = useState(true)
   const [showSegmentModal, setShowSegmentModal] = useState(false)
   const [showHintModal, setShowHintModal] = useState(false)
@@ -35,7 +34,8 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
   const [currentHint, setCurrentHint] = useState('')
 
   const gameLogic = useGameLogic(difficulty, segment)
-  
+  const { saveGameStats } = useStats()
+
   const {
     hintsAvailable,
     canWatchAd,
@@ -48,14 +48,39 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
     rewardMessage,
   } = useHints(storageService)
 
-  // Controlar quando mostrar game over
-  useEffect(() => {
-    if (gameLogic.isGameComplete && gameLogic.isRunning) {
-      setShowGameOverModal(true)
-    }
-  }, [gameLogic.isGameComplete, gameLogic.isRunning])
+  // Controle para evitar salvar a mesma vitória mais de uma vez
+  const hasSavedGame = useRef(false)
 
-  const handleDifficultySelect = (selectedDifficulty: 'easy' | 'medium' | 'hard') => {
+  // Reseta a trava quando inicia um novo jogo
+  useEffect(() => {
+    if (!gameLogic.isGameComplete) {
+      hasSavedGame.current = false
+    }
+  }, [gameLogic.isGameComplete])
+
+  // Dispara o salvamento e exibe o modal assim que o jogo é concluído
+  useEffect(() => {
+    if (gameLogic.isGameComplete && !hasSavedGame.current) {
+      hasSavedGame.current = true
+      setShowGameOverModal(true)
+
+      void saveGameStats(
+        gameLogic.score,
+        gameLogic.time,
+        String(difficulty),
+        String(segment)
+      )
+    }
+  }, [
+    gameLogic.isGameComplete,
+    gameLogic.score,
+    gameLogic.time,
+    difficulty,
+    segment,
+    saveGameStats,
+  ])
+
+  const handleDifficultySelect = (selectedDifficulty: 'easy' | 'medium' | 'hard' | GameDifficulty) => {
     setDifficulty(selectedDifficulty as GameDifficulty)
     setShowDifficultyModal(false)
     setShowSegmentModal(true)
@@ -65,7 +90,6 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
     setSegment(selectedSegment)
     setShowSegmentModal(false)
     void resetHints()
-    gameLogic.reset() // Reinicia o jogo com os novos parâmetros
   }
 
   const handleSelectionStart = (row: number, col: number) => {
@@ -88,16 +112,14 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
     const used = await useHint()
 
     if (used) {
-      const remainingWords = gameLogic.words.filter(
-        w => !gameLogic.foundWords.includes(w.id)
-      )
+      const hintResult = gameLogic.applyHint()
 
-      if (remainingWords.length > 0) {
-        const randomWord = remainingWords[Math.floor(Math.random() * remainingWords.length)]
-        setCurrentHint(`Procure a palavra: ${randomWord.text}`)
+      if (hintResult) {
+        const firstLetter = hintResult.wordText.charAt(0).toUpperCase()
+        setCurrentHint(`💡 Primeira letra: "${firstLetter}" — Significado: ${hintResult.hint}`)
       }
 
-      setShowHintModal(false)
+      setShowHintModal(true)
     }
   }
 
@@ -149,7 +171,13 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
               foundWords={gameLogic.foundWords}
               foundWordColors={gameLogic.foundWordColors}
               words={gameLogic.words}
-              disabled={!gameLogic.isRunning || gameLogic.isGameComplete || isRewardProcessing || showDifficultyModal || showSegmentModal}
+              disabled={
+                !gameLogic.isRunning ||
+                gameLogic.isGameComplete ||
+                isRewardProcessing ||
+                showDifficultyModal ||
+                showSegmentModal
+              }
               onSelectionStart={handleSelectionStart}
               onSelectionMove={handleSelectionMove}
               onSelectionEnd={handleSelectionEnd}
@@ -184,13 +212,18 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
                 isRewardProcessing
                   ? 'Carregando anúncio...'
                   : isCooldownActive
-                    ? `Disponível em ${cooldownSeconds}s`
-                    : hintsAvailable > 0
-                      ? `💡 Dica (${hintsAvailable})`
-                      : '🎁 Ganhar mais uma dica'
+                  ? `Disponível em ${cooldownSeconds}s`
+                  : hintsAvailable > 0
+                  ? `💡 Dica (${hintsAvailable})`
+                  : '🎁 Ganhar mais uma dica'
               }
               hintButtonDisabled={isRewardProcessing || (!canWatchAd && hintsAvailable === 0)}
-              hintStatusText={rewardMessage || (hintsAvailable > 0 ? 'Use uma dica para revelar uma palavra' : 'Assistir um anúncio para ganhar +1 dica')}
+              hintStatusText={
+                rewardMessage ||
+                (hintsAvailable > 0
+                  ? 'Use uma dica para revelar uma palavra'
+                  : 'Assistir um anúncio para ganhar +1 dica')
+              }
             />
 
             {/* Word List */}
@@ -215,11 +248,7 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
               >
                 🔄 Novo Jogo
               </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={onBackToMenu}
-              >
+              <Button variant="outline" className="w-full" onClick={onBackToMenu}>
                 🏠 Voltar ao Menu
               </Button>
             </div>
@@ -255,10 +284,12 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
         onClose={() => {
           setShowGameOverModal(false)
           gameLogic.reset()
+          void resetHints()
         }}
         onRestart={() => {
           setShowGameOverModal(false)
           gameLogic.reset()
+          void resetHints()
         }}
         score={gameLogic.score}
         time={gameLogic.time}

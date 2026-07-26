@@ -122,8 +122,33 @@
   .tooltip {
     @apply absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 rounded-lg bg-black bg-opacity-75 text-xs whitespace-nowrap pointer-events-none;
   }
+}/* Mantém as dimensões exatas de .cell-default, alterando apenas cor e efeito */
+.cell-hinted {
+  background-color: #facc15 !important; /* Amarelo da dica */
+  color: #0f172a !important;            /* Cor do texto */
+  font-weight: 800 !important;
+  animation: pulse-hint 1.2s infinite ease-in-out;
 }
 
+@keyframes pulse-hint {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse-hint {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+}
 /* Animações customizadas */
 @keyframes slideIn {
   from {

@@ -154,13 +154,6 @@ export const Board: React.FC<BoardProps> = ({
     cancelSelectionState()
   }
 
-  const handlePointerLeave = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDrawing || activePointerId.current !== event.pointerId) return
-
-    event.preventDefault()
-    cancelSelectionState()
-  }
-
   useEffect(() => {
     if (!isDrawing || activePointerId.current === null) return
 
@@ -221,6 +214,7 @@ export const Board: React.FC<BoardProps> = ({
                   letter={cell.letter}
                   isSelected={isCellSelected(rowIndex, colIndex)}
                   isFound={isCellFound(rowIndex, colIndex)}
+                  isHinted={cell.isHinted}
                   isError={false}
                   foundColor={foundWordId ? foundWordColors[foundWordId] : undefined}
                 />
