@@ -106,6 +106,7 @@ export class RewardService {
     }
   }
 
+  
   calculateRewardMultiplier(totalEarned: number): number {
     const tiers = this.getRewardTiers()
 
@@ -115,6 +116,7 @@ export class RewardService {
     return tiers.bronze.multiplier
   }
 }
+
 
 export class AnalyticsService {
   async logGameStart(difficulty: string): Promise<void> {

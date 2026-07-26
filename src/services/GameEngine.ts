@@ -3,44 +3,27 @@
 import {
   GameBoard,
   GameDifficulty,
+  WordSegment,
   Word,
   WordDirection,
   Position,
   BoardCell,
 } from '@/types'
+import { contentRegistry } from '@/services/ContentRegistry'
+import type { CategoryWord } from '@/types/Category'
 
-const WORD_DICTIONARY = [
-  'AGRICULTURA',
-  'PECUARIA',
-  'AGRONOMIA',
-  'FAZENDA',
-  'LAVOURA',
-  'COLHEITA',
-  'PLANTIO',
-  'SEMENTE',
-  'ADUBACAO',
-  'FERTILIZANTE',
-  'IRRIGACAO',
-  'SOLO',
-  'PASTAGEM',
-  'GADO',
-  'BOVINOS',
-  'SUINOS',
-  'AVICULTURA',
-  'LEITE',
-  'TRATOR',
-  'COLHEITADEIRA',
-  'PULVERIZADOR',
-  'SILAGEM',
-  'RACAO',
-  'VACINA',
-  'VETERINARIO',
-  'ARMAZENAGEM',
-  'COOPERATIVA',
-  'AGROINDUSTRIA',
-  'SUSTENTABILIDADE',
-  'BIOTECNOLOGIA'
-];
+interface BoardWordCandidate {
+  text: string
+  hint: string
+}
+
+const MAX_WORDS_PER_BOARD = 12
+const MAX_WORD_PLACEMENT_ATTEMPTS = 400
+const WORD_COUNTS_BY_DIFFICULTY = {
+  [GameDifficulty.EASY]: 6,
+  [GameDifficulty.MEDIUM]: 9,
+  [GameDifficulty.HARD]: 12,
+} as const
 
 export class GameEngine {
   private board: GameBoard
@@ -61,6 +44,7 @@ export class GameEngine {
             letter: '',
             wordIds: [],
             isSelected: false,
+            isHinted: false,
           }))
       )
 
@@ -72,23 +56,28 @@ export class GameEngine {
     }
   }
 
-  generateBoard(difficulty: GameDifficulty, width: number = 10, height: number = 10): GameBoard {
+  generateBoard(
+    difficulty: GameDifficulty,
+    segment: WordSegment = WordSegment.AGROPECUARIA,
+    width: number = 10,
+    height: number = 10
+  ): GameBoard {
     this.board = this.initializeBoard(width, height)
     this.words = []
 
-    const wordCount = this.getWordCountByDifficulty(difficulty)
-    const selectedWords = this.selectRandomWords(wordCount)
+    const availableWords = this.getWordCandidates(segment)
+    const wordCount = this.getWordCountByDifficulty(difficulty, availableWords.length)
+    const selectedWords = this.selectRandomWords(wordCount, segment)
 
     // Inserir palavras no tabuleiro
     for (const word of selectedWords) {
       let attempts = 0
-      const maxAttempts = 50
 
-      while (attempts < maxAttempts) {
+      while (attempts < MAX_WORD_PLACEMENT_ATTEMPTS) {
         const direction = this.getRandomDirectionByDifficulty(difficulty)
         const position = this.getRandomPosition()
 
-        if (this.canPlaceWord(word, position, direction)) {
+        if (this.canPlaceWord(word.text, position, direction)) {
           this.placeWord(word, position, direction)
           break
         }
@@ -105,38 +94,47 @@ export class GameEngine {
     return this.board
   }
 
-  private getWordCountByDifficulty(difficulty: GameDifficulty): number {
-    switch (difficulty) {
-      case GameDifficulty.EASY:
-        return 5
-      case GameDifficulty.MEDIUM:
-        return 8
-      case GameDifficulty.HARD:
-        return 12
-      default:
-        return 8
-    }
+  private getWordCountByDifficulty(difficulty: GameDifficulty, availableWordCount: number): number {
+    const baseCount = WORD_COUNTS_BY_DIFFICULTY[difficulty] ?? WORD_COUNTS_BY_DIFFICULTY[GameDifficulty.MEDIUM]
+    return Math.min(baseCount, Math.min(availableWordCount, MAX_WORDS_PER_BOARD))
   }
 
-  private selectRandomWords(count: number): string[] {
-    const selected: string[] = []
-    const shuffled = [...WORD_DICTIONARY].sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, count)
+  private getWordCandidates(segment: WordSegment): BoardWordCandidate[] {
+    const categories = contentRegistry.getCategories()
+    
+    const targetCategory = categories.find(
+      category => String(category.id).toLowerCase() === String(segment).toLowerCase()
+    )
+
+    const selectedCategory = targetCategory || categories[0]
+
+    if (!selectedCategory) {
+      return []
+    }
+
+    return selectedCategory.words.map((word: CategoryWord) => ({
+      text: word.word.toUpperCase(),
+      hint: word.hint,
+    }))
+  }
+
+  private selectRandomWords(count: number, segment: WordSegment): BoardWordCandidate[] {
+    const candidates = this.getWordCandidates(segment)
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5)
+
+    return shuffled.slice(0, Math.min(count, shuffled.length))
   }
 
   private getRandomDirectionByDifficulty(difficulty: GameDifficulty): WordDirection {
     const random = Math.random()
 
     if (difficulty === GameDifficulty.EASY) {
-      // Apenas horizontal e vertical
       return random > 0.5 ? WordDirection.HORIZONTAL : WordDirection.VERTICAL
     } else if (difficulty === GameDifficulty.MEDIUM) {
-      // Adicionar diagonais
       if (random < 0.33) return WordDirection.HORIZONTAL
       if (random < 0.66) return WordDirection.VERTICAL
       return random > 0.83 ? WordDirection.DIAGONAL_DOWN : WordDirection.DIAGONAL_UP
     } else {
-      // Difícil: todas as direções incluindo invertidas
       const directions = Object.values(WordDirection)
       return directions[Math.floor(Math.random() * directions.length)]
     }
@@ -210,13 +208,13 @@ export class GameEngine {
     return positions
   }
 
-  private placeWord(word: string, startPos: Position, direction: WordDirection): void {
-    const positions = this.getWordPositions(word, startPos, direction)
+  private placeWord(word: BoardWordCandidate, startPos: Position, direction: WordDirection): void {
+    const positions = this.getWordPositions(word.text, startPos, direction)
     if (!positions) return
 
     const wordId = `word_${this.words.length}`
     const wordToPlace =
-      direction.startsWith('reverse_') ? word.split('').reverse().join('') : word
+      direction.startsWith('reverse_') ? word.text.split('').reverse().join('') : word.text
 
     for (let i = 0; i < wordToPlace.length; i++) {
       const pos = positions[i]
@@ -226,11 +224,11 @@ export class GameEngine {
 
     this.words.push({
       id: wordId,
-      text: word,
+      text: word.text,
       startPos,
       endPos: positions[positions.length - 1],
       direction,
-      hint: `Procure: ${word}`,
+      hint: word.hint,
       found: false,
     })
   }
@@ -247,12 +245,33 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Aplica uma dica no tabuleiro.
+   * Sorteia uma palavra não encontrada e marca a primeira letra com isHinted = true.
+   */
+  public applyHint(): { wordText: string; hint: string } | null {
+    const remainingWords = this.getRemainingWords()
+
+    if (remainingWords.length === 0) return null
+
+    const randomWord = remainingWords[Math.floor(Math.random() * remainingWords.length)]
+
+    const { row, col } = randomWord.startPos
+    if (this.board.grid[row]?.[col]) {
+      this.board.grid[row][col].isHinted = true
+    }
+
+    return {
+      wordText: randomWord.text,
+      hint: randomWord.hint,
+    }
+  }
+
   validateSelection(positions: Position[]): string | null {
     if (positions.length === 0) return null
 
     const selectionText = positions.map(pos => this.board.grid[pos.row][pos.col].letter).join('')
 
-    // Procurar a palavra exatamente como está
     for (const word of this.words) {
       if (!word.found) {
         if (word.text === selectionText || word.text === selectionText.split('').reverse().join('')) {
@@ -268,6 +287,17 @@ export class GameEngine {
     const word = this.words.find(w => w.id === wordId)
     if (word) {
       word.found = true
+
+      // 💡 Obtém todas as posições da palavra e remove o estado de dica (isHinted = false)
+      const positions = this.getWordPositions(word.text, word.startPos, word.direction)
+      if (positions) {
+        positions.forEach(pos => {
+          if (this.board.grid[pos.row]?.[pos.col]) {
+            this.board.grid[pos.row][pos.col].isHinted = false
+          }
+        })
+      }
+
       return true
     }
     return false

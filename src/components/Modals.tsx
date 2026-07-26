@@ -2,6 +2,9 @@
 
 import React from 'react'
 import { Button, Card } from './BaseComponents'
+import DisplayAd from './DisplayAd'
+import { WordSegment } from '@/types'
+import { contentRegistry } from '@/services/ContentRegistry' // ou import { getCategories } de @/data/categories
 
 interface ModalProps {
   isOpen: boolean
@@ -48,6 +51,12 @@ interface HintModalProps {
   onWatchAd: () => void
   hintsRemaining: number
   hint: string
+  isLoading?: boolean
+  isCooldownActive?: boolean
+  cooldownSeconds?: number
+  statusMessage?: string
+  canUseHint?: boolean
+  showAdSlot?: boolean
 }
 
 export const HintModal: React.FC<HintModalProps> = ({
@@ -57,6 +66,12 @@ export const HintModal: React.FC<HintModalProps> = ({
   onWatchAd,
   hintsRemaining,
   hint,
+  isLoading = false,
+  isCooldownActive = false,
+  cooldownSeconds = 0,
+  statusMessage,
+  canUseHint = true,
+  showAdSlot = false,
 }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Dica">
@@ -65,36 +80,53 @@ export const HintModal: React.FC<HintModalProps> = ({
           <p className="text-lg font-medium">{hint}</p>
         </div>
 
-        {hintsRemaining > 0 ? (
-          <>
-            <p className="text-sm text-muted">
-              Você tem <span className="text-secondary font-bold">{hintsRemaining}</span> dica
-              {hintsRemaining !== 1 ? 's' : ''} gratuita{hintsRemaining !== 1 ? 's' : ''} hoje.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="primary" onClick={onUseHint} className="flex-1">
-                Usar Dica
-              </Button>
-              <Button variant="ghost" onClick={onClose} className="flex-1">
-                Cancelar
-              </Button>
-            </div>
-          </>
+        {isLoading ? (
+          <p className="text-sm text-secondary font-medium">Carregando anúncio...</p>
+        ) : isCooldownActive ? (
+          <p className="text-sm text-secondary font-medium">
+            Disponível em {cooldownSeconds} segundo{cooldownSeconds === 1 ? '' : 's'}.
+          </p>
         ) : (
           <>
-            <p className="text-sm text-muted">Suas dicas gratuitas de hoje acabaram.</p>
-            <p className="text-sm text-secondary font-medium">
-              Assista a um anúncio para ganhar +1 dica!
+            <p className="text-sm text-muted">
+              {canUseHint
+                ? `Você tem ${hintsRemaining} dica${hintsRemaining !== 1 ? 's' : ''} disponível${hintsRemaining !== 1 ? 's' : ''} para esta partida.`
+                : 'Suas dicas gratuitas de hoje acabaram.'}
             </p>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={onWatchAd} className="flex-1">
-                📺 Assistir Anúncio
-              </Button>
+            <p className="text-sm text-secondary font-medium">
+              {canUseHint
+                ? 'Use uma dica agora.'
+                : 'Assista a um anúncio para ganhar +1 dica!'}
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {canUseHint && (
+                <Button variant="primary" onClick={onUseHint} className="flex-1">
+                  Usar Dica
+                </Button>
+              )}
+              {!canUseHint && (
+                <Button variant="secondary" onClick={onWatchAd} className="flex-1">
+                  📺 Assistir Anúncio
+                </Button>
+              )}
               <Button variant="ghost" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>
             </div>
           </>
+        )}
+
+        {showAdSlot && !isLoading && !isCooldownActive && !canUseHint && (
+          <div className="rounded-lg border border-secondary/30 bg-dark/60 p-3 mt-3">
+            <p className="text-xs uppercase tracking-wide text-muted mb-2">Anúncio patrocinado</p>
+            <div className="min-h-[250px]">
+              <DisplayAd slot="7716746018" className="w-full" style={{ minHeight: '250px' }} />
+            </div>
+          </div>
+        )}
+
+        {statusMessage && !isLoading && (
+          <p className="text-sm text-secondary font-medium">{statusMessage}</p>
         )}
       </div>
     </Modal>
@@ -207,6 +239,42 @@ export const DifficultyModal: React.FC<DifficultyModalProps> = ({ isOpen, onSele
             <p className="font-bold text-red-400">🔴 Difícil</p>
             <p className="text-sm text-muted">+ Palavras invertidas</p>
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface SegmentModalProps {
+  isOpen: boolean
+  onSelect: (segment: WordSegment) => void
+}
+
+export const SegmentModal: React.FC<SegmentModalProps> = ({ isOpen, onSelect }) => {
+  if (!isOpen) return null
+
+  // Busca todas as categorias cadastradas automaticamente!
+  const categories = contentRegistry.getCategories()
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2 className="text-2xl font-bold text-secondary mb-2">Escolha o Segmento</h2>
+        <p className="text-sm text-muted mb-6">Selecione o tema das palavras deste jogo.</p>
+
+        <div className="space-y-3">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => onSelect(cat.id as WordSegment)}
+              className="w-full p-4 rounded-xl bg-secondary/10 border border-secondary/30 hover:bg-secondary/20 transition-all text-left"
+            >
+              <p className="font-bold text-secondary">{cat.name}</p>
+              {cat.description && (
+                <p className="text-sm text-muted">{cat.description}</p>
+              )}
+            </button>
+          ))}
         </div>
       </div>
     </div>

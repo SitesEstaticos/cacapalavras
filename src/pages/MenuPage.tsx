@@ -1,23 +1,16 @@
 // Página de Menu
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Button, Card } from '@components/index'
+import { useStats } from '@hooks/index'
 
-export const MenuPage: React.FC<{ onStartGame: () => void }> = ({ onStartGame }) => {
-  const [stats, setStats] = useState({
-    gamesPlayed: 0,
-    bestScore: 0,
-    bestTime: 0,
-  })
+interface MenuPageProps {
+  onStartGame: () => void
+  onOpenStats?: () => void // 👈 Nova callback para abrir as estatísticas
+}
 
-  useEffect(() => {
-    // Carregar estatísticas do storage
-    loadStats()
-  }, [])
-
-  const loadStats = async () => {
-    // Implementar carregamento de estatísticas
-  }
+export const MenuPage: React.FC<MenuPageProps> = ({ onStartGame, onOpenStats }) => {
+  const { stats } = useStats()
 
   return (
     <div className="min-h-screen bg-dark p-4 md:p-8 flex items-center justify-center">
@@ -29,7 +22,7 @@ export const MenuPage: React.FC<{ onStartGame: () => void }> = ({ onStartGame })
           <p className="text-muted mt-2">Jogo Moderno de Palavras</p>
         </div>
 
-        {/* Estatísticas */}
+        {/* Estatísticas resumidas */}
         <Card>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
@@ -54,12 +47,16 @@ export const MenuPage: React.FC<{ onStartGame: () => void }> = ({ onStartGame })
           <Button variant="primary" className="w-full py-3" onClick={onStartGame}>
             🎮 Novo Jogo
           </Button>
-          <Button variant="secondary" className="w-full py-3">
+
+          {/* Botão conectado com a tela de estatísticas */}
+          <Button variant="secondary" className="w-full py-3" onClick={onOpenStats}>
             📊 Estatísticas
           </Button>
+
           <Button variant="outline" className="w-full py-3">
             ⚙️ Configurações
           </Button>
+
           <Button variant="ghost" className="w-full py-3">
             🏆 Conquistas
           </Button>
@@ -68,7 +65,7 @@ export const MenuPage: React.FC<{ onStartGame: () => void }> = ({ onStartGame })
         {/* Rodapé */}
         <div className="text-center text-xs text-muted mt-8">
           <p>Versão 1.0.0</p>
-          <p className="mt-2">© 2024 - Desenvolvido com ❤️</p>
+          <p className="mt-2">© 2026 M³ Technology - Desenvolvido com carinho</p>
         </div>
       </div>
     </div>
