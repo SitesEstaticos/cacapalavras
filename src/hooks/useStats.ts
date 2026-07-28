@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { StorageService } from '@services/StorageService'
 import { WebStorageAdapter } from '@adapters/index'
-import { GameSession, GameDifficulty, WordSegment } from '@/types'
+import { GameSession, GameDifficulty, WordSegment, GameMode } from '@/types'
 
 export interface GameHistoryItem {
   id: string
@@ -10,6 +10,8 @@ export interface GameHistoryItem {
   score: number
   difficulty: string
   segment: string
+  mode: GameMode | string
+  gameMode?: GameMode | string
 }
 
 export interface GameStats {
@@ -34,7 +36,7 @@ export function useStats() {
   const [stats, setStats] = useState<GameStats>(DEFAULT_STATS)
   const [isLoading, setIsLoading] = useState(true)
 
-  const storageService = new StorageService(new WebStorageAdapter())
+  const storageService = useMemo(() => new StorageService(new WebStorageAdapter()), [])
 
   const loadStats = useCallback(async () => {
     try {
@@ -76,6 +78,8 @@ export function useStats() {
           score: Number(s.score ?? 0),
           difficulty: String(s.difficulty ?? 'Médio'),
           segment: String(s.segment ?? 'Geral'),
+          mode: (s.gameMode || s.mode || GameMode.CLASSIC) as GameMode,
+          gameMode: (s.gameMode || s.mode || GameMode.CLASSIC) as GameMode,
         }))
         .reverse()
 
@@ -92,14 +96,15 @@ export function useStats() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [storageService])
 
   const saveGameStats = useCallback(
     async (
       newScore: number,
       newTime: number,
       difficulty?: GameDifficulty | string,
-      segment?: WordSegment | string
+      segment?: WordSegment | string,
+      mode?: GameMode | string
     ) => {
       try {
         const now = new Date()
@@ -107,6 +112,7 @@ export function useStats() {
 
         const finalDifficulty = difficulty ? String(difficulty) : 'Médio'
         const finalSegment = segment ? String(segment) : 'Geral'
+        const finalMode = mode ? String(mode) : GameMode.CLASSIC
 
         const newSession = {
           id: `game_${Date.now()}`,
@@ -116,6 +122,8 @@ export function useStats() {
           score: newScore,
           difficulty: finalDifficulty as any,
           segment: finalSegment as any,
+          gameMode: finalMode as any,
+          mode: finalMode as any,
           foundWords: [],
           totalWords: 0,
           isCompleted: true,
@@ -127,7 +135,7 @@ export function useStats() {
         console.error('Erro ao salvar estatísticas:', error)
       }
     },
-    [loadStats]
+    [storageService, loadStats]
   )
 
   const clearStats = useCallback(async () => {
@@ -137,7 +145,7 @@ export function useStats() {
     } catch (error) {
       console.error('Erro ao limpar estatísticas:', error)
     }
-  }, [loadStats])
+  }, [storageService, loadStats])
 
   useEffect(() => {
     loadStats()

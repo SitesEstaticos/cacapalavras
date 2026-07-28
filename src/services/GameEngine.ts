@@ -246,24 +246,37 @@ export class GameEngine {
   }
 
   /**
-   * Aplica uma dica no tabuleiro.
-   * Sorteia uma palavra não encontrada e marca a primeira letra com isHinted = true.
+   * Aplica a dica no tabuleiro.
+   * Marca a PRIMEIRA LETRA REAL da palavra com isHinted = true
+   * e retorna as informações necessárias (Texto, Dica e Direção).
    */
-  public applyHint(): { wordText: string; hint: string } | null {
+  public applyHint(): { wordId: string; wordText: string; hint: string; direction: WordDirection } | null {
     const remainingWords = this.getRemainingWords()
 
     if (remainingWords.length === 0) return null
 
+    // Sorteia uma palavra restante que ainda não teve a dica aplicada
     const randomWord = remainingWords[Math.floor(Math.random() * remainingWords.length)]
 
-    const { row, col } = randomWord.startPos
-    if (this.board.grid[row]?.[col]) {
-      this.board.grid[row][col].isHinted = true
+    // Obtém as posições exatas
+    const positions = this.getWordPositions(randomWord.text, randomWord.startPos, randomWord.direction)
+
+    if (positions && positions.length > 0) {
+      // Se for palavra invertida, a primeira letra original da palavra fica na última posição calculada!
+      const firstLetterPos = randomWord.direction.startsWith('reverse_')
+        ? positions[positions.length - 1]
+        : positions[0]
+
+      if (this.board.grid[firstLetterPos.row]?.[firstLetterPos.col]) {
+        this.board.grid[firstLetterPos.row][firstLetterPos.col].isHinted = true
+      }
     }
 
     return {
+      wordId: randomWord.id,
       wordText: randomWord.text,
       hint: randomWord.hint,
+      direction: randomWord.direction,
     }
   }
 
@@ -288,7 +301,7 @@ export class GameEngine {
     if (word) {
       word.found = true
 
-      // 💡 Obtém todas as posições da palavra e remove o estado de dica (isHinted = false)
+      // Obtém todas as posições da palavra e remove o estado de dica (isHinted = false)
       const positions = this.getWordPositions(word.text, word.startPos, word.direction)
       if (positions) {
         positions.forEach(pos => {

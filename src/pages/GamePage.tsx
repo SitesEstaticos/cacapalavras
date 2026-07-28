@@ -13,15 +13,42 @@ import {
 } from '@components/index'
 import { useGameLogic, useHints, useStats } from '@hooks/index'
 import { StorageService } from '@services/StorageService'
-import { GameDifficulty, WordSegment } from '@/types'
+import { GameDifficulty, WordSegment, GameMode } from '@/types'
 import { WebStorageAdapter } from '@adapters/index'
 import AdContainer from '@/components/ads/AdContainer'
 
 interface GamePageProps {
+  gameMode?: GameMode
   onBackToMenu?: () => void
 }
 
-export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
+const getDirectionLabel = (direction?: string): string => {
+  switch (direction) {
+    case 'horizontal':
+      return 'Horizontal ➔'
+    case 'reverse_horizontal':
+      return 'Horizontal (Invertida) ⬅'
+    case 'vertical':
+      return 'Vertical ⬇'
+    case 'reverse_vertical':
+      return 'Vertical (Invertida) ⬆'
+    case 'diagonal_down':
+      return 'Diagonal Para Baixo ↘'
+    case 'reverse_diagonal_down':
+      return 'Diagonal Para Cima ↖'
+    case 'diagonal_up':
+      return 'Diagonal Para Cima ↗'
+    case 'reverse_diagonal_up':
+      return 'Diagonal Para Baixo ↙'
+    default:
+      return ''
+  }
+}
+
+export const GamePage: React.FC<GamePageProps> = ({
+  gameMode = GameMode.CLASSIC,
+  onBackToMenu,
+}) => {
   const storageService = useMemo(() => new StorageService(new WebStorageAdapter()), [])
 
   const [difficulty, setDifficulty] = useState<GameDifficulty>(GameDifficulty.MEDIUM)
@@ -48,17 +75,15 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
     rewardMessage,
   } = useHints(storageService)
 
-  // Controle para evitar salvar a mesma vitória mais de uma vez
   const hasSavedGame = useRef(false)
 
-  // Reseta a trava quando inicia um novo jogo
   useEffect(() => {
     if (!gameLogic.isGameComplete) {
       hasSavedGame.current = false
     }
   }, [gameLogic.isGameComplete])
 
-  // Dispara o salvamento e exibe o modal assim que o jogo é concluído
+  // Salva o resultado ao concluir
   useEffect(() => {
     if (gameLogic.isGameComplete && !hasSavedGame.current) {
       hasSavedGame.current = true
@@ -68,7 +93,8 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
         gameLogic.score,
         gameLogic.time,
         String(difficulty),
-        String(segment)
+        String(segment),
+        gameMode
       )
     }
   }, [
@@ -77,6 +103,7 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
     gameLogic.time,
     difficulty,
     segment,
+    gameMode,
     saveGameStats,
   ])
 
@@ -116,7 +143,17 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
 
       if (hintResult) {
         const firstLetter = hintResult.wordText.charAt(0).toUpperCase()
-        setCurrentHint(`💡 Primeira letra: "${firstLetter}" — Significado: ${hintResult.hint}`)
+        const directionLabel = getDirectionLabel(hintResult.direction)
+
+        if (gameMode === GameMode.CLASSIC) {
+          setCurrentHint(
+            `💡 1ª Letra: "${firstLetter}" | Direção: ${directionLabel}`
+          )
+        } else {
+          setCurrentHint(
+            `💡 1ª Letra: "${firstLetter}" | Direção: ${directionLabel}\n\n📖 Conceito: ${hintResult.hint}`
+          )
+        }
       }
 
       setShowHintModal(true)
@@ -152,7 +189,16 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-secondary">Caça Palavras 🔍</h1>
+          <div>
+            <h1 className="text-4xl font-bold text-secondary flex items-center gap-2">
+              Caça Palavras 🔍
+            </h1>
+            {gameMode === GameMode.CHALLENGE && (
+              <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-bold">
+                Modo Significados
+              </span>
+            )}
+          </div>
           <Button variant="ghost" onClick={() => gameLogic.togglePause()}>
             {gameLogic.isRunning ? '⏸️ Pausar' : '▶️ Retomar'}
           </Button>
@@ -221,7 +267,9 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
               hintStatusText={
                 rewardMessage ||
                 (hintsAvailable > 0
-                  ? 'Use uma dica para revelar uma palavra'
+                  ? gameMode === GameMode.CLASSIC
+                    ? 'Revela a 1ª letra e a direção da palavra.'
+                    : 'Revela a 1ª letra, direção e o significado.'
                   : 'Assistir um anúncio para ganhar +1 dica')
               }
             />
@@ -230,6 +278,8 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
             <WordList
               words={gameLogic.words}
               foundWords={gameLogic.foundWords}
+              hintedDirections={gameLogic.hintedDirections}
+              gameMode={gameMode}
               onWordClick={word => console.log('Palavra clicada:', word)}
             />
 
@@ -291,6 +341,7 @@ export const GamePage: React.FC<GamePageProps> = ({ onBackToMenu }) => {
           gameLogic.reset()
           void resetHints()
         }}
+        onBackToMenu={onBackToMenu}
         score={gameLogic.score}
         time={gameLogic.time}
         wordsFound={gameLogic.foundWords.length}

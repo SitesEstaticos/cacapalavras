@@ -1,10 +1,10 @@
 // Componentes de Modais
 
 import React from 'react'
-import { Button, Card } from './BaseComponents'
+import { Button } from './BaseComponents'
 import DisplayAd from './DisplayAd'
 import { WordSegment } from '@/types'
-import { contentRegistry } from '@/services/ContentRegistry' // ou import { getCategories } de @/data/categories
+import { contentRegistry } from '@/services/ContentRegistry'
 
 interface ModalProps {
   isOpen: boolean
@@ -77,7 +77,7 @@ export const HintModal: React.FC<HintModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Dica">
       <div className="space-y-4">
         <div className="p-4 rounded-lg bg-secondary bg-opacity-20 border border-secondary">
-          <p className="text-lg font-medium">{hint}</p>
+          <p className="text-lg font-medium whitespace-pre-line">{hint}</p>
         </div>
 
         {isLoading ? (
@@ -137,6 +137,7 @@ interface GameOverModalProps {
   isOpen: boolean
   onClose: () => void
   onRestart: () => void
+  onBackToMenu?: () => void // 👈 Adicionado suporte para voltar ao menu
   score: number
   time: number
   wordsFound: number
@@ -148,6 +149,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   isOpen,
   onClose,
   onRestart,
+  onBackToMenu,
   score,
   time,
   wordsFound,
@@ -156,6 +158,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 }) => {
   const minutes = Math.floor(time / 60)
   const seconds = time % 60
+  const accuracy = totalWords > 0 ? Math.round((wordsFound / totalWords) * 100) : 0
 
   return (
     <Modal
@@ -184,7 +187,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <div className="text-center p-4 rounded-lg bg-white bg-opacity-5">
             <p className="text-xs text-muted mb-1">Acurácia</p>
             <p className="text-3xl font-bold text-secondary">
-              {Math.round((wordsFound / totalWords) * 100)}%
+              {accuracy}%
             </p>
           </div>
         </div>
@@ -193,7 +196,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <Button variant="secondary" onClick={onRestart} className="flex-1">
             Novo Jogo
           </Button>
-          <Button variant="ghost" onClick={onClose} className="flex-1">
+          {/* 💡 Botão agora executa onBackToMenu se fornecido, ou apenas fecha o modal */}
+          <Button variant="ghost" onClick={onBackToMenu || onClose} className="flex-1">
             Menu
           </Button>
         </div>
@@ -253,8 +257,7 @@ interface SegmentModalProps {
 export const SegmentModal: React.FC<SegmentModalProps> = ({ isOpen, onSelect }) => {
   if (!isOpen) return null
 
-  // Busca todas as categorias cadastradas automaticamente!
-  const categories = contentRegistry.getCategories()
+  const categories = contentRegistry?.getCategories ? contentRegistry.getCategories() : []
 
   return (
     <div className="modal-overlay">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Card, Button } from './BaseComponents'
 import { useStats, GameHistoryItem } from '@/hooks/useStats'
+import { GameMode } from '@/types'
 
 interface StatsScreenProps {
   onBack: () => void
@@ -33,13 +34,21 @@ const formatDate = (isoString: string): string => {
 export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
   const { stats, isLoading, clearStats } = useStats()
   const [filterDifficulty, setFilterDifficulty] = useState<string>('ALL')
+  const [filterMode, setFilterMode] = useState<string>('ALL')
 
   const history = stats.history || []
 
-  // Filtra as partidas pela dificuldade selecionada
+  // Filtra as partidas pela dificuldade e pelo modo selecionados
   const filteredHistory = history.filter(item => {
-    if (filterDifficulty === 'ALL') return true
-    return item.difficulty.toUpperCase() === filterDifficulty.toUpperCase()
+    const itemMode = item.mode || item.gameMode || GameMode.CLASSIC
+
+    const matchesDifficulty =
+      filterDifficulty === 'ALL' || item.difficulty.toUpperCase() === filterDifficulty.toUpperCase()
+
+    const matchesMode =
+      filterMode === 'ALL' || itemMode.toLowerCase() === filterMode.toLowerCase()
+
+    return matchesDifficulty && matchesMode
   })
 
   if (isLoading) {
@@ -94,36 +103,60 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
 
       {/* Lista / Histórico de Partidas */}
       <Card className="p-5 bg-slate-800/60 border border-gray-700/50">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
           <h2 className="text-lg font-semibold text-white">Histórico de Partidas</h2>
 
-          {/* Filtros por dificuldade */}
-          <div className="flex gap-1.5 text-xs">
-            {[
-              { id: 'ALL', label: 'Todas' },
-              { id: 'EASY', label: 'Fácil' },
-              { id: 'MEDIUM', label: 'Médio' },
-              { id: 'HARD', label: 'Difícil' },
-            ].map(diff => (
-              <button
-                key={diff.id}
-                onClick={() => setFilterDifficulty(diff.id)}
-                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                  filterDifficulty === diff.id
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-700/70 text-gray-300 hover:bg-slate-600'
-                }`}
-              >
-                {diff.label}
-              </button>
-            ))}
+          {/* Filtros: Modo de Jogo e Dificuldade */}
+          <div className="flex flex-wrap gap-3">
+            {/* Filtro de Modo */}
+            <div className="flex gap-1 text-xs bg-slate-900/80 p-1 rounded-lg border border-gray-700/60">
+              {[
+                { id: 'ALL', label: 'Todos Modos' },
+                { id: GameMode.CLASSIC, label: '🔤 Tradicional' },
+                { id: GameMode.CHALLENGE, label: '🧠 Significados' },
+              ].map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setFilterMode(m.id)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                    filterMode === m.id
+                      ? 'bg-amber-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filtro de Dificuldade */}
+            <div className="flex gap-1 text-xs bg-slate-900/80 p-1 rounded-lg border border-gray-700/60">
+              {[
+                { id: 'ALL', label: 'Todas' },
+                { id: 'EASY', label: 'Fácil' },
+                { id: 'MEDIUM', label: 'Médio' },
+                { id: 'HARD', label: 'Difícil' },
+              ].map(diff => (
+                <button
+                  key={diff.id}
+                  onClick={() => setFilterDifficulty(diff.id)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                    filterDifficulty === diff.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {diff.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Tabela de Histórico */}
         {filteredHistory.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
-            Nenhuma partida encontrada no histórico.
+            Nenhuma partida encontrada no histórico para esses filtros.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -131,6 +164,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
               <thead className="bg-slate-900/60 text-xs uppercase text-gray-400 border-b border-gray-700">
                 <tr>
                   <th className="py-3 px-4">Data</th>
+                  <th className="py-3 px-4">Modo</th>
                   <th className="py-3 px-4">Dificuldade</th>
                   <th className="py-3 px-4">Tema</th>
                   <th className="py-3 px-4 text-center">Tempo</th>
@@ -138,33 +172,56 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ onBack }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
-                {filteredHistory.map((item: GameHistoryItem) => (
-                  <tr key={item.id} className="hover:bg-slate-700/30 transition-colors">
-                    <td className="py-3 px-4 text-xs text-gray-400">{formatDate(item.date)}</td>
-                    <td className="py-3 px-4 font-medium text-white capitalize">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                          item.difficulty.toLowerCase().includes('easy') ||
-                          item.difficulty.toLowerCase().includes('fácil')
-                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                            : item.difficulty.toLowerCase().includes('medium') ||
-                              item.difficulty.toLowerCase().includes('médio')
-                            ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                            : 'bg-rose-950 text-rose-400 border border-rose-800'
-                        }`}
-                      >
-                        {item.difficulty}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 capitalize">{item.segment || 'Geral'}</td>
-                    <td className="py-3 px-4 text-center font-mono font-bold text-amber-300">
-                      ⏱️ {formatTime(item.timeInSeconds)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-400">
-                      +{item.score}
-                    </td>
-                  </tr>
-                ))}
+                {filteredHistory.map((item: GameHistoryItem) => {
+                  const itemMode = item.mode || item.gameMode || GameMode.CLASSIC
+                  const isChallenge = itemMode === GameMode.CHALLENGE
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-700/30 transition-colors">
+                      <td className="py-3 px-4 text-xs text-gray-400">{formatDate(item.date)}</td>
+                      
+                      {/* Coluna Modo */}
+                      <td className="py-3 px-4 font-medium">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                            isChallenge
+                              ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60'
+                              : 'bg-blue-950/80 text-blue-300 border border-blue-700/60'
+                          }`}
+                        >
+                          {isChallenge ? '🧠 Significados' : '🔤 Tradicional'}
+                        </span>
+                      </td>
+
+                      {/* Coluna Dificuldade */}
+                      <td className="py-3 px-4 font-medium text-white capitalize">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                            item.difficulty.toLowerCase().includes('easy') ||
+                            item.difficulty.toLowerCase().includes('fácil')
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                              : item.difficulty.toLowerCase().includes('medium') ||
+                                item.difficulty.toLowerCase().includes('médio')
+                              ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                              : 'bg-rose-950 text-rose-400 border border-rose-800'
+                          }`}
+                        >
+                          {item.difficulty}
+                        </span>
+                      </td>
+
+                      <td className="py-3 px-4 capitalize">{item.segment || 'Geral'}</td>
+                      
+                      <td className="py-3 px-4 text-center font-mono font-bold text-amber-300">
+                        ⏱️ {formatTime(item.timeInSeconds)}
+                      </td>
+                      
+                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
+                        +{item.score}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

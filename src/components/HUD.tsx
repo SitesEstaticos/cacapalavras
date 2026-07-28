@@ -63,7 +63,9 @@ export const HUD: React.FC<HUDProps> = ({
         <div>
           <span className="text-sm text-muted block">Dicas disponíveis</span>
           <span className="text-2xl font-bold text-secondary">{hintsAvailable}</span>
-          <p className="text-xs text-muted mt-1">{hintStatusText || 'Use uma dica para revelar o início de uma palavra.'}</p>
+          <p className="text-xs text-muted mt-1">
+            {hintStatusText || 'Mostra a 1ª letra e indica a direção no painel.'}
+          </p>
         </div>
         {onHintClick && (
           <button

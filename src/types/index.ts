@@ -12,7 +12,12 @@ export enum WordSegment {
   AGROPECUARIA = 'agropecuaria',
   CIENCIAS = 'ciencias',
   TECNOLOGIA = 'tecnologia',
-  BIBLICA = 'biblica'
+  BIBLICA = 'biblica',
+}
+
+export enum GameMode {
+  CLASSIC = 'classic',     // Modo Tradicional: exibe a palavra na lista e 1ª letra + direção na dica
+  CHALLENGE = 'challenge', // Modo Significados: oculta a palavra na lista; exibe 1ª letra + direção + conceito/significado na dica
 }
 
 export enum WordDirection {
@@ -63,6 +68,7 @@ export interface GameState {
   time: number
   isRunning: boolean
   difficulty: GameDifficulty
+  gameMode: GameMode
   foundWords: string[]
   totalWords: number
   remainingHints: number
@@ -150,11 +156,15 @@ export interface GameStatistics {
   averageScore: number
   totalWordsFound: number
   preferredDifficulty: GameDifficulty
+  preferredMode?: GameMode
+  classicGamesPlayed?: number
+  challengeGamesPlayed?: number
 }
 
 export interface GameSession {
   id: string
   difficulty: GameDifficulty
+  gameMode: GameMode
   startTime: number
   endTime: number | null
   board: GameBoard

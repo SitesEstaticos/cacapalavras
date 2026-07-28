@@ -17,6 +17,7 @@ interface UseGameState {
   selectedCells: Position[]
   foundWords: string[]
   foundWordColors: Record<string, string>
+  hintedDirections: Record<string, string> // 💡 Mapeia wordId -> WordDirection
   score: number
   time: number
   isRunning: boolean
@@ -116,6 +117,7 @@ export const useGameLogic = (
     selectedCells: [],
     foundWords: [],
     foundWordColors: {},
+    hintedDirections: {},
     score: 0,
     time: 0,
     isRunning: false,
@@ -141,6 +143,7 @@ export const useGameLogic = (
       selectedCells: [],
       foundWords: [],
       foundWordColors: {},
+      hintedDirections: {},
       score: 0,
       time: 0,
       isRunning: true,
@@ -246,14 +249,13 @@ export const useGameLogic = (
       setGameState(prev => {
         const newScore = prev.score + points
 
-        // Se concluiu o jogo, salva as estatísticas automaticamente
         if (isComplete) {
           saveGameStats(newScore, prev.time)
         }
 
         return {
           ...prev,
-          board: updatedBoard.grid.map(row => [...row]), // 💡 Atualiza a referência do tabuleiro para remover o pisca-pisca
+          board: updatedBoard.grid.map(row => [...row]),
           foundWords: [...prev.foundWords, wordId],
           foundWordColors: {
             ...prev.foundWordColors,
@@ -268,7 +270,6 @@ export const useGameLogic = (
       selectionDirectionRef.current = null
       selectedCellsRef.current = []
     } else {
-      // Seleção inválida - limpar
       setGameState(prev => ({
         ...prev,
         selectedCells: [],
@@ -287,7 +288,11 @@ export const useGameLogic = (
       const updatedBoard = gameEngineRef.current.getBoard()
       setGameState(prev => ({
         ...prev,
-        board: updatedBoard.grid.map(row => [...row]), // 💡 Força o React a re-renderizar as linhas do tabuleiro com isHinted
+        board: updatedBoard.grid.map(row => [...row]),
+        hintedDirections: {
+          ...prev.hintedDirections,
+          [hintResult.wordId]: hintResult.direction,
+        },
       }))
     }
 
@@ -305,6 +310,7 @@ export const useGameLogic = (
       selectedCells: [],
       foundWords: [],
       foundWordColors: {},
+      hintedDirections: {},
       score: 0,
       time: 0,
       isRunning: true,
