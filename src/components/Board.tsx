@@ -37,7 +37,11 @@ export const Board: React.FC<BoardProps> = ({
     if (!disabled) return
 
     if (activePointerId.current !== null && boardRef.current?.hasPointerCapture(activePointerId.current)) {
-      boardRef.current.releasePointerCapture(activePointerId.current)
+      try {
+        boardRef.current.releasePointerCapture(activePointerId.current)
+      } catch {
+        // Ignora caso já tenha sido liberado
+      }
     }
     setIsDrawing(false)
     activePointerId.current = null
@@ -60,7 +64,7 @@ export const Board: React.FC<BoardProps> = ({
     return selectedCells.some(pos => pos.row === row && pos.col === col)
   }
 
-  const getCellFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+  const getCellFromPointer = (event: React.PointerEvent<HTMLDivElement> | PointerEvent) => {
     const element = document.elementFromPoint(event.clientX, event.clientY)
     const cell = element?.closest<HTMLElement>('[data-board-cell="true"]')
 
@@ -80,17 +84,22 @@ export const Board: React.FC<BoardProps> = ({
         boardRef.current.releasePointerCapture(pointerId)
       }
     } catch {
-      // Ignore if browser already released capture
+      // Ignora erro se o navegador já liberou a captura
     }
   }
 
   const clearSelectionState = (shouldValidate = false) => {
-    releaseCapturedPointer(activePointerId.current)
+    const currentPointer = activePointerId.current
+    
+    // Reseta os estados ANTES de chamar as rotinas externas
     setIsDrawing(false)
     activePointerId.current = null
+    releaseCapturedPointer(currentPointer)
 
     if (shouldValidate) {
       onSelectionEnd?.()
+    } else {
+      onSelectionCancel?.()
     }
   }
 
@@ -100,7 +109,6 @@ export const Board: React.FC<BoardProps> = ({
 
   const cancelSelectionState = () => {
     clearSelectionState(false)
-    onSelectionCancel?.()
   }
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -113,7 +121,7 @@ export const Board: React.FC<BoardProps> = ({
     const cell = getCellFromPointer(event)
     if (!cell) return
 
-    // Impede rolagem e seleção de texto ao tocar
+    // Impede rolagem e seleção de texto ao tocar no celular
     if (event.cancelable) event.preventDefault()
 
     activePointerId.current = event.pointerId
@@ -121,7 +129,7 @@ export const Board: React.FC<BoardProps> = ({
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
-      // Ignore capture failures on some browsers
+      // Ignora falhas de captura em navegadores antigos
     }
 
     setIsDrawing(true)
@@ -151,10 +159,11 @@ export const Board: React.FC<BoardProps> = ({
     cancelSelectionState()
   }
 
+  // 💡 CORREÇÃO MOBILE: Não cancelamos se for apenas perda espontânea de captura no fim do toque
   const handleLostPointerCapture = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!isDrawing || activePointerId.current !== event.pointerId) return
-
-    cancelSelectionState()
+    // Em vez de cancelar, apenas liberamos o ID do ponteiro
+    activePointerId.current = null
   }
 
   useEffect(() => {
@@ -162,7 +171,7 @@ export const Board: React.FC<BoardProps> = ({
 
     const handleWindowPointerUp = (event: PointerEvent) => {
       if (activePointerId.current !== event.pointerId) return
-      cancelSelectionState()
+      finishSelectionState() // 💡 Toca como finalização em vez de cancelamento
     }
 
     const handleWindowPointerCancel = (event: PointerEvent) => {
@@ -172,12 +181,10 @@ export const Board: React.FC<BoardProps> = ({
 
     window.addEventListener('pointerup', handleWindowPointerUp)
     window.addEventListener('pointercancel', handleWindowPointerCancel)
-    window.addEventListener('lostpointercapture', handleWindowPointerCancel)
 
     return () => {
       window.removeEventListener('pointerup', handleWindowPointerUp)
       window.removeEventListener('pointercancel', handleWindowPointerCancel)
-      window.removeEventListener('lostpointercapture', handleWindowPointerCancel)
     }
   }, [isDrawing])
 
@@ -190,8 +197,8 @@ export const Board: React.FC<BoardProps> = ({
         disabled ? 'opacity-75' : ''
       }`}
       style={{
-        touchAction: 'none', // 💡 Impede scroll, pull-to-refresh e gestos no celular
-        WebkitUserSelect: 'none', // 💡 Desativa seleção de texto no iOS/Safari
+        touchAction: 'none', // Impede scroll, pull-to-refresh e gestos no celular
+        WebkitUserSelect: 'none', // Desativa seleção de texto no iOS/Safari
         userSelect: 'none',
       }}
       onPointerDown={handlePointerDown}
@@ -221,7 +228,7 @@ export const Board: React.FC<BoardProps> = ({
                 className="select-none"
                 style={{
                   touchAction: 'none',
-                  WebkitTapHighlightColor: 'transparent', // 💡 Elimina o escurecido/flash cinza ao clicar
+                  WebkitTapHighlightColor: 'transparent', // Elimina o escurecido/flash cinza
                 }}
               >
                 <Cell

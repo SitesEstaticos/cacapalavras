@@ -137,7 +137,7 @@ interface GameOverModalProps {
   isOpen: boolean
   onClose: () => void
   onRestart: () => void
-  onBackToMenu?: () => void // 👈 Adicionado suporte para voltar ao menu
+  onBackToMenu?: () => void 
   score: number
   time: number
   wordsFound: number

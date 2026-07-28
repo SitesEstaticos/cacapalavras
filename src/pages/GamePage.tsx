@@ -119,7 +119,11 @@ export const GamePage: React.FC<GamePageProps> = ({
     void resetHints()
   }
 
+  // 💡 AJUSTE TOUCH/MOBILE: Limpa o estado da dica quando o toque inicia
   const handleSelectionStart = (row: number, col: number) => {
+    if (currentHint) {
+      setCurrentHint('')
+    }
     gameLogic.startSelection(row, col)
   }
 
@@ -127,12 +131,21 @@ export const GamePage: React.FC<GamePageProps> = ({
     gameLogic.updateSelection(row, col)
   }
 
+  // 💡 AJUSTE TOUCH/MOBILE: Proteção ao finalizar a seleção para evitar travamentos
   const handleSelectionEnd = () => {
-    gameLogic.validateSelection()
+    try {
+      gameLogic.validateSelection()
+    } catch (error) {
+      console.error('Erro ao validar seleção:', error)
+    } finally {
+      // Garante que o estado local da dica fique limpo ao tentar acertar a palavra
+      setCurrentHint('')
+    }
   }
 
   const handleSelectionCancel = () => {
     gameLogic.cancelSelection()
+    setCurrentHint('')
   }
 
   const handleUseHint = async () => {
@@ -185,7 +198,7 @@ export const GamePage: React.FC<GamePageProps> = ({
     }[difficulty] || 'Médio'
 
   return (
-    <div className="min-h-screen bg-dark p-4 md:p-8">
+    <div className="min-h-screen bg-dark p-4 md:p-8 select-none">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -290,15 +303,16 @@ export const GamePage: React.FC<GamePageProps> = ({
             <div className="space-y-2">
               <Button
                 variant="primary"
-                className="w-full"
+                className="w-full cursor-pointer"
                 onClick={() => {
+                  setCurrentHint('')
                   gameLogic.reset()
                   void resetHints()
                 }}
               >
                 🔄 Novo Jogo
               </Button>
-              <Button variant="outline" className="w-full" onClick={onBackToMenu}>
+              <Button variant="outline" className="w-full cursor-pointer" onClick={onBackToMenu}>
                 🏠 Voltar ao Menu
               </Button>
             </div>
@@ -333,11 +347,13 @@ export const GamePage: React.FC<GamePageProps> = ({
         isOpen={showGameOverModal}
         onClose={() => {
           setShowGameOverModal(false)
+          setCurrentHint('')
           gameLogic.reset()
           void resetHints()
         }}
         onRestart={() => {
           setShowGameOverModal(false)
+          setCurrentHint('')
           gameLogic.reset()
           void resetHints()
         }}
