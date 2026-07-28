@@ -19,8 +19,11 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
+      <div 
+        className="modal max-h-[90vh] flex flex-col" 
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4 shrink-0">
           <h2 className="text-2xl font-bold text-secondary">{title}</h2>
           <button
             onClick={onClose}
@@ -30,9 +33,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
           </button>
         </div>
 
-        <div className="mb-6 text-light">{children}</div>
+        <div className="mb-6 text-light overflow-y-auto pr-1 flex-1">{children}</div>
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-3 justify-end shrink-0">
           {actions || (
             <Button variant="secondary" onClick={onClose}>
               Fechar
@@ -196,7 +199,6 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <Button variant="secondary" onClick={onRestart} className="flex-1">
             Novo Jogo
           </Button>
-          {/* 💡 Botão agora executa onBackToMenu se fornecido, ou apenas fecha o modal */}
           <Button variant="ghost" onClick={onBackToMenu || onClose} className="flex-1">
             Menu
           </Button>
@@ -216,10 +218,10 @@ export const DifficultyModal: React.FC<DifficultyModalProps> = ({ isOpen, onSele
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
-        <h2 className="text-2xl font-bold text-secondary mb-6">Escolha a Dificuldade</h2>
+      <div className="modal max-h-[90vh] flex flex-col">
+        <h2 className="text-2xl font-bold text-secondary mb-6 shrink-0">Escolha a Dificuldade</h2>
 
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto pr-1 flex-1">
           <button
             onClick={() => onSelect('easy')}
             className="w-full p-4 rounded-xl bg-green-500 bg-opacity-20 border border-green-500 hover:bg-opacity-30 transition-all text-left"
@@ -261,11 +263,14 @@ export const SegmentModal: React.FC<SegmentModalProps> = ({ isOpen, onSelect }) 
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
-        <h2 className="text-2xl font-bold text-secondary mb-2">Escolha o Segmento</h2>
-        <p className="text-sm text-muted mb-6">Selecione o tema das palavras deste jogo.</p>
+      <div className="modal max-h-[85vh] flex flex-col">
+        <div className="shrink-0 mb-4">
+          <h2 className="text-2xl font-bold text-secondary mb-1">Escolha o Segmento</h2>
+          <p className="text-sm text-muted">Selecione o tema das palavras deste jogo.</p>
+        </div>
 
-        <div className="space-y-3">
+        {/* Adicionada a barra de rolagem e limite de altura no container da lista */}
+        <div className="space-y-3 overflow-y-auto pr-2 flex-1 max-h-[60vh]">
           {categories.map((cat) => (
             <button
               key={cat.id}

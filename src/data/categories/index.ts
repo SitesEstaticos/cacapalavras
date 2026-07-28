@@ -2,6 +2,8 @@ import agropecuaria from './agropecuaria'
 import ciencias from './ciencias'
 import tecnologia from './tecnologia'
 import biblica from './biblica' 
+import esportes from './esporte'
+import geografia from './geografia'
 import type { Category, CategoryCollection, GameDefinition } from '@/types/Category'
 
 export const categories: Record<string, Category> = {
@@ -9,6 +11,8 @@ export const categories: Record<string, Category> = {
   [ciencias.id]: ciencias,
   [tecnologia.id]: tecnologia,
   [biblica.id]: biblica,
+  [esportes.id]: esportes,
+  [geografia.id]: geografia,
 }
 
 export const categoryCollections: CategoryCollection[] = [
@@ -17,7 +21,7 @@ export const categoryCollections: CategoryCollection[] = [
     slug: 'educational-basics',
     name: 'Fundamentos Educativos',
     description: 'Coleção inicial para explorar temas diversos.',
-    categories: [agropecuaria.id, ciencias.id, tecnologia.id, biblica.id],
+    categories: [agropecuaria.id, ciencias.id, tecnologia.id, biblica.id,geografia.id,esportes.id],
 
   },
 ]
@@ -28,7 +32,7 @@ export const gameDefinitions: GameDefinition[] = [
     slug: 'word-search',
     name: 'Caça-Palavras',
     description: 'Modo clássico de caça-palavras com dicas e recompensas.',
-    supportedCategoryIds: [agropecuaria.id, ciencias.id, tecnologia.id],
+    supportedCategoryIds: [agropecuaria.id, ciencias.id, tecnologia.id, biblica.id, geografia.id, esportes.id],
   },
 ]
 
