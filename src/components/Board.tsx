@@ -113,13 +113,15 @@ export const Board: React.FC<BoardProps> = ({
     const cell = getCellFromPointer(event)
     if (!cell) return
 
-    event.preventDefault()
+    // Impede rolagem e seleção de texto ao tocar
+    if (event.cancelable) event.preventDefault()
+
     activePointerId.current = event.pointerId
 
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
-      // Ignore capture failures on some browsers or rapid pointer changes
+      // Ignore capture failures on some browsers
     }
 
     setIsDrawing(true)
@@ -129,7 +131,8 @@ export const Board: React.FC<BoardProps> = ({
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (disabled || !isDrawing || activePointerId.current !== event.pointerId) return
 
-    event.preventDefault()
+    if (event.cancelable) event.preventDefault()
+
     const cell = getCellFromPointer(event)
     if (cell) onSelectionMove(cell.row, cell.col)
   }
@@ -137,14 +140,14 @@ export const Board: React.FC<BoardProps> = ({
   const finishSelection = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!isDrawing || activePointerId.current !== event.pointerId) return
 
-    event.preventDefault()
+    if (event.cancelable) event.preventDefault()
     finishSelectionState()
   }
 
   const handlePointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!isDrawing || activePointerId.current !== event.pointerId) return
 
-    event.preventDefault()
+    if (event.cancelable) event.preventDefault()
     cancelSelectionState()
   }
 
@@ -183,9 +186,14 @@ export const Board: React.FC<BoardProps> = ({
   return (
     <div
       ref={boardRef}
-      className={`word-search-board relative w-full max-w-full overflow-x-auto ${
+      className={`word-search-board relative w-full max-w-full overflow-x-auto select-none ${
         disabled ? 'opacity-75' : ''
       }`}
+      style={{
+        touchAction: 'none', // 💡 Impede scroll, pull-to-refresh e gestos no celular
+        WebkitUserSelect: 'none', // 💡 Desativa seleção de texto no iOS/Safari
+        userSelect: 'none',
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finishSelection}
@@ -193,9 +201,10 @@ export const Board: React.FC<BoardProps> = ({
       onLostPointerCapture={handleLostPointerCapture}
     >
       <div
-        className="word-search-grid grid gap-1 p-2 sm:p-4 card mx-auto"
+        className="word-search-grid grid gap-1 p-2 sm:p-4 card mx-auto select-none"
         style={{
           gridTemplateColumns: `repeat(${boardWidth}, minmax(0, 1fr))`,
+          touchAction: 'none',
         }}
         aria-label={`Tabuleiro com ${words.length} palavras`}
       >
@@ -209,6 +218,11 @@ export const Board: React.FC<BoardProps> = ({
                 data-board-cell="true"
                 data-row={rowIndex}
                 data-col={colIndex}
+                className="select-none"
+                style={{
+                  touchAction: 'none',
+                  WebkitTapHighlightColor: 'transparent', // 💡 Elimina o escurecido/flash cinza ao clicar
+                }}
               >
                 <Cell
                   letter={cell.letter}
