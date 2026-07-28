@@ -27,7 +27,7 @@ export const MenuPage: React.FC<MenuPageProps> = ({
 
   // URL para abrir a composição de e-mail no Gmail em uma nova aba
   const gmailUrl =
-    'https://mail.google.com/mail/?view=cm&fs=1&to=contato@m3technology.com.br&su=Contato%20-%20Ca%C3%A7a%20Palavras'
+    'https://mail.google.com/mail/?view=cm&fs=1&to=m3technology.br@gmail.com&su=Contato%20-%20Ca%C3%A7a%20Palavras'
 
   return (
     <div className="min-h-screen bg-dark p-4 md:p-8 flex flex-col justify-between">
